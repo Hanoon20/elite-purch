@@ -234,7 +234,7 @@
     -webkit-appearance:none;appearance:none;transition:border-color .15s ease;
   }
   input[type=date]:hover, select:hover{border-color:rgba(148,163,210,.4);}
-  input[type=date]::-webkit-calendar-picker-indicator{filter:invert(.8);cursor:pointer;}
+  input[type=date]::-webkit-calendar-picker-indicator{opacity:.85;cursor:pointer;}
   select{
     background-image:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="%238391B8"><path d="M5.5 7.5l4.5 5 4.5-5z"/></svg>');
     background-repeat:no-repeat;background-position:right 10px center;background-size:18px;padding-right:34px;
@@ -418,7 +418,13 @@
   .input::placeholder{color:var(--muted);opacity:.8;}
   .input:hover{border-color:rgba(148,163,210,.4);}
   .input:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 3px rgba(109,139,255,.22);}
-  .input[type=date]::-webkit-calendar-picker-indicator{filter:invert(.8);cursor:pointer;}
+  .input[type=date]::-webkit-calendar-picker-indicator{opacity:.85;cursor:pointer;}
+  .date-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+  .date-row .input{flex:1 1 180px;min-width:0;cursor:pointer;}
+  .date-quick{display:flex;gap:6px;}
+  .date-quick .chip{min-height:40px;padding:8px 14px;font-size:13px;}
+  input[type=date]{cursor:pointer;}
+  input[type=date]::-webkit-date-and-time-value{text-align:left;}
   .amount-wrap{position:relative;}
   .amount-wrap .cur{position:absolute;left:15px;top:50%;transform:translateY(-50%);color:var(--muted);font-weight:700;font-size:16px;pointer-events:none;}
   .amount-wrap .input{padding-left:50px;font-size:22px;min-height:56px;}
@@ -696,17 +702,23 @@
         <div class="field-err" id="errAmount"></div>
       </div>
 
-      <div class="two-col">
-        <div class="field">
-          <label class="field-label" for="billInvoice">Invoice no. <span class="req" aria-hidden="true">*</span></label>
-          <input class="input" id="billInvoice" type="text" placeholder="e.g. INV-10234" maxlength="60" enterkeyhint="next" spellcheck="false" aria-describedby="errInvoice">
-          <div class="field-err" id="errInvoice"></div>
+      <div class="field">
+        <label class="field-label" for="billInvoice">Invoice no. <span class="req" aria-hidden="true">*</span></label>
+        <input class="input" id="billInvoice" type="text" placeholder="e.g. INV-10234" maxlength="60" enterkeyhint="next" spellcheck="false" aria-describedby="errInvoice">
+        <div class="field-err" id="errInvoice"></div>
+      </div>
+
+      <div class="field">
+        <label class="field-label" for="billDate">Bill date <span class="req" aria-hidden="true">*</span></label>
+        <div class="date-row">
+          <input class="input" id="billDate" type="date" aria-describedby="dateHint errDate">
+          <div class="date-quick" id="dateQuick">
+            <button type="button" class="chip" data-days="0">Today</button>
+            <button type="button" class="chip" data-days="1">Yesterday</button>
+          </div>
         </div>
-        <div class="field">
-          <label class="field-label" for="billDate">Bill date <span class="req" aria-hidden="true">*</span></label>
-          <input class="input" id="billDate" type="date" aria-describedby="errDate">
-          <div class="field-err" id="errDate"></div>
-        </div>
+        <div class="field-hint" id="dateHint"></div>
+        <div class="field-err" id="errDate"></div>
       </div>
 
       <div class="dup-warn" id="dupWarn" hidden></div>
@@ -1360,6 +1372,12 @@ function onBillEdit(){
   $("billDest").innerHTML = d && d.getFullYear() === LEDGER_YEAR
     ? `Saves to the <b>${MONTH_SHEETS[d.getMonth()]}</b> tab · columns A–D`
     : `Saves to the month tab of the bill date`;
+  $("dateHint").textContent = d ? d.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" }) : "";
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  document.querySelectorAll("#dateQuick .chip").forEach(c => {
+    const t = new Date(today); t.setDate(t.getDate() - +c.dataset.days);
+    c.classList.toggle("active", !!d && d.getTime() === t.getTime());
+  });
   const name = billCombo.value;
   $("supplierHint").innerHTML = name && !SUPPLIERS.some(s => s.name === name)
     ? `<span class="tag">NEW</span> Not in your ledger yet — check the spelling before saving` : "";
@@ -1588,6 +1606,17 @@ $("billAmount").addEventListener("blur", () => {
   if(a > 0) $("billAmount").value = nf2.format(a);   // tidy to 12,500.00 once typed
 });
 $("billAmount").addEventListener("keydown", e => { if(e.key === "Enter"){ e.preventDefault(); $("billInvoice").focus(); } });
+$("dateQuick").addEventListener("click", e => {
+  const c = e.target.closest(".chip"); if(!c) return;
+  const d = new Date(); d.setDate(d.getDate() - +c.dataset.days);
+  $("billDate").value = toLocalISODate(d);
+  setFieldErr("Date", "");
+  onBillEdit();
+});
+// Open the calendar when the date box is clicked anywhere, not just on the small icon
+["billDate", "dateFrom", "dateTo"].forEach(id => $(id).addEventListener("click", e => {
+  try{ e.currentTarget.showPicker(); }catch(err){ /* older browsers: native behaviour */ }
+}));
 $("billDate").min = `${LEDGER_YEAR}-01-01`;
 $("billDate").max = `${LEDGER_YEAR}-12-31`;
 $("signOutBtn").addEventListener("click", e => { e.stopPropagation(); signOut(); });
