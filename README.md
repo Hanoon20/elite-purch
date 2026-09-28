@@ -1,4 +1,4 @@
-# Purchase Ledger
+# Elite Colour World — Purchase Ledger
 
 A single-file, live purchase dashboard that reads straight from a private Google Sheet, secured with Google Sign-In (read-only scope).
 
