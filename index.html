@@ -240,6 +240,43 @@
     background-repeat:no-repeat;background-position:right 10px center;background-size:18px;padding-right:34px;
     text-overflow:ellipsis;
   }
+  .finder-card{position:relative;z-index:5;} /* keep the supplier dropdown above later cards */
+  .combo{position:relative;}
+  .combo-btn{
+    width:100%;min-height:44px;display:flex;align-items:center;justify-content:space-between;gap:10px;
+    background:var(--panel-alt);border:1px solid var(--border-strong);color:var(--text);
+    border-radius:11px;padding:11px 12px;font-size:14px;font-weight:600;cursor:pointer;text-align:left;
+    transition:border-color .15s ease;
+  }
+  .combo-btn:hover,.combo-btn[aria-expanded="true"]{border-color:var(--brand);}
+  .combo-btn:focus-visible{outline:2px solid var(--brand);outline-offset:2px;}
+  .combo-btn span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;}
+  .combo-btn .placeholder{color:var(--muted);font-weight:500;}
+  .combo-btn svg{width:18px;height:18px;color:var(--muted);flex-shrink:0;transition:transform .15s ease;}
+  .combo-btn[aria-expanded="true"] svg{transform:rotate(180deg);}
+  .combo-panel{
+    position:absolute;left:0;right:0;top:calc(100% + 6px);z-index:40;
+    background:var(--panel-solid);border:1px solid var(--border-strong);border-radius:14px;
+    box-shadow:0 20px 44px -12px rgba(0,0,0,.7);overflow:hidden;animation:pop .14s ease-out;
+  }
+  .combo-search{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--border);}
+  .combo-search svg{width:16px;height:16px;color:var(--muted);flex-shrink:0;}
+  .combo-search input{
+    flex:1;min-width:0;background:none;border:0;outline:none;color:var(--text);
+    font-family:inherit;font-size:16px;padding:4px 0;
+  }
+  .combo-search input::placeholder{color:var(--muted);}
+  .combo-list{list-style:none;margin:0;padding:6px;max-height:280px;overflow-y:auto;overscroll-behavior:contain;}
+  .combo-opt{
+    display:flex;align-items:center;justify-content:space-between;gap:12px;
+    padding:10px 10px;border-radius:9px;cursor:pointer;font-size:14px;
+  }
+  .combo-opt .n{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;}
+  .combo-opt .v{font-size:12px;color:var(--muted);flex-shrink:0;}
+  .combo-opt mark{background:rgba(109,139,255,.28);color:#fff;border-radius:3px;padding:0 1px;}
+  .combo-opt.active{background:var(--panel-alt);}
+  .combo-opt[aria-selected="true"]{color:var(--brand-2);font-weight:700;}
+  .combo-empty{padding:14px 10px;color:var(--muted);font-size:13px;text-align:center;}
   .chips{display:flex;flex-wrap:wrap;gap:6px;}
   .chip{
     background:transparent;border:1px solid var(--border-strong);color:var(--text-2);
@@ -461,7 +498,7 @@
 
   <!-- Finder -->
   <div class="sec-head"><div><div class="sec-title">Quick Finder</div><div class="sec-sub">Totals by date range and supplier</div></div></div>
-  <section class="card" aria-label="Quick finder">
+  <section class="card finder-card" aria-label="Quick finder">
     <div class="tabs" role="tablist">
       <button class="tab" role="tab" aria-selected="true" data-mode="range" type="button">Date range</button>
       <button class="tab" role="tab" aria-selected="false" data-mode="supplier" type="button">Supplier</button>
@@ -470,8 +507,21 @@
     <div class="finder-grid">
       <div class="fields">
         <div class="field" id="supplierField" hidden>
-          <label class="field-label" for="supplierSelect">Supplier</label>
-          <select id="supplierSelect"><option value="">Loading&hellip;</option></select>
+          <span class="field-label" id="supplierLabel">Supplier</span>
+          <div class="combo" id="supplierCombo">
+            <button type="button" class="combo-btn" id="supplierBtn" aria-haspopup="listbox" aria-expanded="false" aria-labelledby="supplierLabel supplierBtnText">
+              <span id="supplierBtnText" class="placeholder">Choose a supplier&hellip;</span>
+              <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M5.5 7.5l4.5 5 4.5-5z"/></svg>
+            </button>
+            <div class="combo-panel" id="supplierPanel" hidden>
+              <div class="combo-search">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+                <input type="search" id="supplierSearch" placeholder="Search supplier&hellip;" autocomplete="off" spellcheck="false"
+                  role="combobox" aria-controls="supplierList" aria-expanded="true" aria-autocomplete="list">
+              </div>
+              <ul class="combo-list" id="supplierList" role="listbox" aria-labelledby="supplierLabel"></ul>
+            </div>
+          </div>
         </div>
         <div id="dateFields" class="fields">
           <div class="two-col">
@@ -656,7 +706,6 @@ function enterDashboard(){
 // Bill shape (compact for speed + cache size): {s: supplier, a: amount, t: local-midnight ms | null, k: sheet index}
 let BILLS = [];
 let BY_SUPPLIER = new Map();   // supplier -> bills[]
-let SUPPLIER_KEY = "";
 
 const clean = v => (v === null || v === undefined) ? "" : String(v).replace(/[​-‍﻿]/g,"").trim();
 const esc = s => s.replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -882,16 +931,76 @@ function renderTopSuppliers(bySup, total){
     </div>`).join("") : `<div class="empty">No data yet</div>`;
 }
 
+// ---------------------------------------------------------------------------
+// Searchable supplier picker
+// ---------------------------------------------------------------------------
+let SUPPLIERS = [];          // [{name, total, lc}] sorted by name
+let selectedSupplier = "";
+let comboMatches = [], comboActive = -1;
+
 function renderSupplierOptions(bySup){
-  const names = [...bySup.keys()].sort((a, b) => a.localeCompare(b));
-  const key = names.join("\u0001");
-  if(key === SUPPLIER_KEY) return; // unchanged — skip DOM rebuild
-  SUPPLIER_KEY = key;
-  const sel = $("supplierSelect");
-  const cur = sel.value;
-  sel.innerHTML = `<option value="">Choose a supplier…</option>` +
-    names.map(n => `<option value="${esc(n)}">${esc(n)}</option>`).join("");
-  if(bySup.has(cur)) sel.value = cur;
+  SUPPLIERS = [...bySup.entries()]
+    .map(([name, total]) => ({ name, total, lc: name.toLowerCase() }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+  if(selectedSupplier && !bySup.has(selectedSupplier)) setSupplier("");
+  if(!$("supplierPanel").hidden) filterSuppliers();
+}
+
+function setSupplier(name){
+  selectedSupplier = name;
+  const t = $("supplierBtnText");
+  t.textContent = name || "Choose a supplier\u2026";
+  t.classList.toggle("placeholder", !name);
+  updateFinder();
+}
+
+function openCombo(){
+  $("supplierPanel").hidden = false;
+  $("supplierBtn").setAttribute("aria-expanded", "true");
+  const input = $("supplierSearch");
+  input.value = "";
+  filterSuppliers();
+  input.focus();
+}
+function closeCombo(focusBtn){
+  if($("supplierPanel").hidden) return;
+  $("supplierPanel").hidden = true;
+  $("supplierBtn").setAttribute("aria-expanded", "false");
+  if(focusBtn) $("supplierBtn").focus();
+}
+
+function filterSuppliers(){
+  const q = $("supplierSearch").value.trim().toLowerCase();
+  comboMatches = q ? SUPPLIERS.filter(s => s.lc.includes(q)) : SUPPLIERS;
+  // Names that start with the query come first
+  if(q) comboMatches = [...comboMatches].sort((a, b) => (b.lc.startsWith(q) - a.lc.startsWith(q)) || a.name.localeCompare(b.name));
+  const sel = comboMatches.findIndex(s => s.name === selectedSupplier);
+  comboActive = q ? (comboMatches.length ? 0 : -1) : sel;
+  const hl = name => {
+    if(!q) return esc(name);
+    const i = name.toLowerCase().indexOf(q);
+    return esc(name.slice(0, i)) + "<mark>" + esc(name.slice(i, i + q.length)) + "</mark>" + esc(name.slice(i + q.length));
+  };
+  $("supplierList").innerHTML = !SUPPLIERS.length ? `<li class="combo-empty">Loading suppliers\u2026</li>`
+    : !comboMatches.length ? `<li class="combo-empty">No supplier matches \u201C${esc(q)}\u201D</li>`
+    : comboMatches.map((s, i) => `<li class="combo-opt${i === comboActive ? " active" : ""}" role="option" id="sopt${i}" data-i="${i}"
+        aria-selected="${s.name === selectedSupplier}"><span class="n">${hl(s.name)}</span><span class="v num">${fmtCompact(s.total)}</span></li>`).join("");
+  syncActive();
+}
+
+function syncActive(){
+  const list = $("supplierList");
+  list.querySelectorAll(".combo-opt.active").forEach(el => el.classList.remove("active"));
+  const el = comboActive >= 0 ? $("sopt" + comboActive) : null;
+  if(el){ el.classList.add("active"); el.scrollIntoView({ block: "nearest" }); }
+  $("supplierSearch").setAttribute("aria-activedescendant", el ? el.id : "");
+}
+
+function pickSupplier(i){
+  const s = comboMatches[i];
+  if(!s) return;
+  setSupplier(s.name);
+  closeCombo(true);
 }
 
 // ---------------------------------------------------------------------------
@@ -911,7 +1020,7 @@ function updateFinder(){
   const valEl = $("resultValue"), subEl = $("resultSub"), labelEl = $("resultLabel");
   const setMsg = (msg, cls) => { valEl.textContent = msg; valEl.className = "result-value num " + cls; subEl.textContent = ""; };
   const needSupplier = finderMode !== "range", needDates = finderMode !== "supplier";
-  const supplier = $("supplierSelect").value;
+  const supplier = selectedSupplier;
   labelEl.textContent = finderMode === "range" ? "Total purchase in range"
                       : finderMode === "supplier" ? "Supplier total (all dates)" : "Supplier total in range";
 
@@ -983,7 +1092,28 @@ $("presetChips").addEventListener("click", e => {
   document.querySelectorAll("#presetChips .chip").forEach(c => c.classList.remove("active"));
   updateFinder();
 }));
-$("supplierSelect").addEventListener("change", updateFinder);
+$("supplierBtn").addEventListener("click", () => $("supplierPanel").hidden ? openCombo() : closeCombo(false));
+$("supplierBtn").addEventListener("keydown", e => {
+  if(e.key === "ArrowDown" || (e.key.length === 1 && /\S/.test(e.key))){
+    // Typing on the closed button opens the search and starts filtering
+    e.preventDefault(); openCombo();
+    if(e.key.length === 1){ $("supplierSearch").value = e.key; filterSuppliers(); }
+  }
+});
+$("supplierSearch").addEventListener("input", filterSuppliers);
+$("supplierSearch").addEventListener("keydown", e => {
+  const n = comboMatches.length;
+  if(e.key === "ArrowDown"){ e.preventDefault(); if(n){ comboActive = (comboActive + 1) % n; syncActive(); } }
+  else if(e.key === "ArrowUp"){ e.preventDefault(); if(n){ comboActive = (comboActive - 1 + n) % n; syncActive(); } }
+  else if(e.key === "Enter"){ e.preventDefault(); pickSupplier(comboActive); }
+  else if(e.key === "Escape"){ e.preventDefault(); e.stopPropagation(); closeCombo(true); }
+  else if(e.key === "Tab") closeCombo(false);
+});
+$("supplierList").addEventListener("mousedown", e => e.preventDefault()); // keep focus in the search box
+$("supplierList").addEventListener("click", e => {
+  const o = e.target.closest(".combo-opt"); if(o) pickSupplier(+o.dataset.i);
+});
+document.addEventListener("click", e => { if(!$("supplierCombo").contains(e.target)) closeCombo(false); });
 
 // Chart: event delegation (one listener, not one per bar) + hover tooltip
 const chartEl = $("chart"), tip = $("tooltip");
