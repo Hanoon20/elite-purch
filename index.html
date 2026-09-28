@@ -357,10 +357,105 @@
 
   .empty{color:var(--muted);font-size:13px;padding:10px 0;}
 
+  /* ---------- Primary actions ---------- */
+  .btn-primary{
+    background:linear-gradient(135deg,#7B96FF,#4F6BEA);border-color:transparent;color:#fff;
+    box-shadow:0 8px 20px -8px rgba(79,107,234,.75);
+  }
+  .btn-primary:hover{background:linear-gradient(135deg,#8CA3FF,#5B77F0);border-color:transparent;}
+  .btn-ghost{background:transparent;}
+  .btn:disabled{opacity:.6;cursor:default;transform:none;}
+  .btn .spinner{display:none;width:15px;height:15px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;}
+  .btn.loading .spinner{display:inline-block;}
+  .add-btn{display:none;}
+  .fab{
+    position:fixed;right:16px;bottom:calc(18px + env(safe-area-inset-bottom));z-index:50;
+    display:none;align-items:center;gap:8px;height:54px;padding:0 22px 0 18px;border-radius:999px;border:0;
+    background:linear-gradient(135deg,#7B96FF,#4F6BEA);color:#fff;font-weight:700;font-size:15px;cursor:pointer;
+    box-shadow:0 14px 30px -8px rgba(79,107,234,.85), 0 0 0 1px rgba(255,255,255,.08) inset;
+    transition:transform .12s ease;
+  }
+  .fab:active{transform:scale(.96);}
+  .fab svg,.add-btn svg{width:18px;height:18px;}
+  .fab:focus-visible{outline:2px solid #fff;outline-offset:3px;}
+
+  /* ---------- Add bill dialog ---------- */
+  .modal{
+    padding:0;border:1px solid var(--border-strong);border-radius:22px;
+    background:var(--panel-solid);color:var(--text);
+    width:min(520px, calc(100% - 32px));max-width:none;max-height:calc(100dvh - 48px);
+    box-shadow:0 40px 90px -20px rgba(0,0,0,.85);overflow:hidden;
+  }
+  .modal[open]{display:flex;flex-direction:column;animation:modalIn .22s cubic-bezier(.2,.8,.2,1);}
+  .modal::backdrop{background:rgba(4,7,16,.66);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);}
+  @keyframes modalIn{from{opacity:0;transform:translateY(12px) scale(.98);}to{opacity:1;transform:none;}}
+  @keyframes sheetUp{from{transform:translateY(100%);}to{transform:none;}}
+  .modal form{display:flex;flex-direction:column;flex:1;min-height:0;}
+  .modal-head{display:flex;align-items:center;gap:12px;padding:18px 18px 16px 20px;border-bottom:1px solid var(--border);}
+  .modal-icon{width:42px;height:42px;border-radius:13px;flex-shrink:0;display:grid;place-items:center;
+    background:linear-gradient(135deg,var(--brand),var(--brand-2));box-shadow:0 8px 18px -8px rgba(109,139,255,.8);}
+  .modal-icon svg{width:20px;height:20px;}
+  .modal-titles{min-width:0;flex:1;}
+  .modal-title{font-size:18px;font-weight:700;margin:0;letter-spacing:-.02em;}
+  .modal-sub{margin:3px 0 0;font-size:12.5px;color:var(--muted);}
+  .modal-sub b{color:var(--brand-2);font-weight:700;}
+  .icon-btn{width:38px;height:38px;border-radius:11px;border:1px solid var(--border);background:transparent;color:var(--muted);
+    display:grid;place-items:center;cursor:pointer;flex-shrink:0;transition:background .15s ease,color .15s ease;}
+  .icon-btn:hover{background:var(--panel-alt);color:var(--text);}
+  .icon-btn svg{width:18px;height:18px;}
+  .modal-body{padding:18px 20px 20px;overflow-y:auto;overscroll-behavior:contain;display:grid;gap:18px;flex:1;min-height:0;}
+  .modal-foot{
+    display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
+    padding:14px 20px calc(14px + env(safe-area-inset-bottom));border-top:1px solid var(--border);background:rgba(0,0,0,.14);
+  }
+  .foot-btns{display:flex;gap:8px;margin-left:auto;}
+  .foot-btns .btn{min-height:44px;padding:10px 18px;font-size:14px;}
+  .input{
+    background:var(--panel-alt);border:1px solid var(--border-strong);color:var(--text);
+    border-radius:11px;padding:11px 12px;font-size:16px;width:100%;font-family:inherit;min-height:46px;
+    -webkit-appearance:none;appearance:none;transition:border-color .15s ease, box-shadow .15s ease;
+  }
+  .input::placeholder{color:var(--muted);opacity:.8;}
+  .input:hover{border-color:rgba(148,163,210,.4);}
+  .input:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 3px rgba(109,139,255,.22);}
+  .input[type=date]::-webkit-calendar-picker-indicator{filter:invert(.8);cursor:pointer;}
+  .amount-wrap{position:relative;}
+  .amount-wrap .cur{position:absolute;left:15px;top:50%;transform:translateY(-50%);color:var(--muted);font-weight:700;font-size:16px;pointer-events:none;}
+  .amount-wrap .input{padding-left:50px;font-size:22px;min-height:56px;}
+  .req{color:var(--rose);}
+  .field-hint{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px;}
+  .field-hint .tag{background:rgba(34,211,182,.14);color:var(--brand-2);border-radius:6px;padding:2px 7px;font-weight:700;font-size:11px;}
+  .field-err{font-size:12px;color:var(--rose);font-weight:600;}
+  .field-hint:empty,.field-err:empty,.form-err:empty,.form-ok:empty{display:none;}
+  .field.invalid .input,.field.invalid .combo-btn{border-color:var(--rose);}
+  .dup-warn{background:rgba(245,181,68,.10);border:1px solid rgba(245,181,68,.42);color:#F9D796;border-radius:12px;padding:11px 13px;font-size:13px;line-height:1.5;}
+  .form-err{background:rgba(242,112,122,.10);border:1px solid rgba(242,112,122,.42);color:#FFB3B9;border-radius:12px;padding:11px 13px;font-size:13px;line-height:1.5;}
+  .form-ok{background:rgba(52,211,153,.10);border:1px solid rgba(52,211,153,.4);color:#9EF0CB;border-radius:12px;padding:10px 13px;font-size:13px;font-weight:600;}
+  .check{display:flex;align-items:center;gap:9px;font-size:13px;color:var(--text-2);cursor:pointer;user-select:none;}
+  .check input{width:18px;height:18px;accent-color:var(--brand);margin:0;cursor:pointer;}
+  .modal .combo-panel{position:static;margin-top:6px;box-shadow:none;animation:none;}
+  .modal .combo-list{max-height:210px;}
+  .combo-new .n{color:var(--brand-2);font-weight:600;display:flex;align-items:center;gap:8px;}
+  .combo-new svg{width:15px;height:15px;flex-shrink:0;}
+
+  /* ---------- Toast ---------- */
+  .toast{
+    position:fixed;left:50%;bottom:calc(88px + env(safe-area-inset-bottom));z-index:60;
+    transform:translate(-50%,16px);opacity:0;pointer-events:none;
+    max-width:calc(100% - 32px);width:max-content;
+    background:#0A0F1F;border:1px solid var(--border-strong);border-radius:14px;
+    padding:12px 16px;font-size:13.5px;font-weight:600;box-shadow:0 18px 40px -12px rgba(0,0,0,.8);
+    display:flex;align-items:center;gap:10px;transition:opacity .2s ease, transform .2s ease;
+  }
+  .toast.show{opacity:1;transform:translate(-50%,0);}
+  .toast::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--green);flex-shrink:0;}
+  .toast.error::before{background:var(--rose);}
+
   footer{max-width:1080px;margin:32px auto 0;padding:0 16px;text-align:center;color:var(--muted);font-size:11.5px;}
   footer svg{width:12px;height:12px;vertical-align:-2px;margin-right:4px;}
 
   @media(min-width:680px){
+    .authed .add-btn{display:inline-flex;}
     .overview{grid-template-columns:1.2fr 1fr;}
     .hero{display:flex;flex-direction:column;justify-content:center;}
     .kpi-grid{grid-template-columns:1fr;}
@@ -368,6 +463,16 @@
     .chart{gap:10px;}
     .chart-labels{gap:10px;}
     .chart-labels span{font-size:11.5px;}
+  }
+  @media(max-width:679px){
+    .authed .fab{display:inline-flex;}
+    body.authed{padding-bottom:calc(96px + env(safe-area-inset-bottom));}
+    .modal{width:100%;margin:auto 0 0;border-radius:22px 22px 0 0;border-bottom:0;max-height:94dvh;}
+    .modal[open]{animation:sheetUp .28s cubic-bezier(.2,.8,.2,1);}
+    .modal-head{position:relative;padding-top:24px;}
+    .modal-head::before{content:"";position:absolute;top:8px;left:50%;transform:translateX(-50%);width:38px;height:4px;border-radius:2px;background:var(--border-strong);}
+    .foot-btns{width:100%;}
+    .foot-btns .btn{flex:1;justify-content:center;}
   }
   @media(max-width:380px){
     .chart{gap:3px;}
@@ -448,6 +553,10 @@
       </div>
     </div>
     <div class="header-actions">
+      <button id="addBillBtn" class="btn btn-primary add-btn" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+        Add bill
+      </button>
       <button id="refreshBtn" class="btn" type="button" aria-label="Refresh data">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v6h-6"/></svg>
         <span class="lbl">Refresh</span>
@@ -508,20 +617,7 @@
       <div class="fields">
         <div class="field" id="supplierField" hidden>
           <span class="field-label" id="supplierLabel">Supplier</span>
-          <div class="combo" id="supplierCombo">
-            <button type="button" class="combo-btn" id="supplierBtn" aria-haspopup="listbox" aria-expanded="false" aria-labelledby="supplierLabel supplierBtnText">
-              <span id="supplierBtnText" class="placeholder">Choose a supplier&hellip;</span>
-              <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M5.5 7.5l4.5 5 4.5-5z"/></svg>
-            </button>
-            <div class="combo-panel" id="supplierPanel" hidden>
-              <div class="combo-search">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
-                <input type="search" id="supplierSearch" placeholder="Search supplier&hellip;" autocomplete="off" spellcheck="false"
-                  role="combobox" aria-controls="supplierList" aria-expanded="true" aria-autocomplete="list">
-              </div>
-              <ul class="combo-list" id="supplierList" role="listbox" aria-labelledby="supplierLabel"></ul>
-            </div>
-          </div>
+          <div class="combo" id="supplierCombo"></div>
         </div>
         <div id="dateFields" class="fields">
           <div class="two-col">
@@ -563,6 +659,72 @@
   <section class="card" id="topSuppliersPanel" aria-label="Top suppliers"><div class="empty">Loading&hellip;</div></section>
 </main>
 
+<button id="addBillFab" class="fab" type="button" aria-label="Add new bill">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+  Add bill
+</button>
+
+<dialog id="billDialog" class="modal" aria-labelledby="billTitle">
+  <form id="billForm" novalidate autocomplete="off">
+    <div class="modal-head">
+      <div class="modal-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6M9 16h3"/></svg></div>
+      <div class="modal-titles">
+        <h2 class="modal-title" id="billTitle">Add new bill</h2>
+        <p class="modal-sub" id="billDest">Saves to the month tab of the bill date</p>
+      </div>
+      <button type="button" class="icon-btn" id="billClose" aria-label="Close">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </div>
+
+    <div class="modal-body">
+      <div class="form-ok" id="formOk" role="status"></div>
+
+      <div class="field">
+        <span class="field-label" id="billSupplierLabel">Supplier <span class="req" aria-hidden="true">*</span></span>
+        <div class="combo" id="billSupplierCombo"></div>
+        <div class="field-hint" id="supplierHint"></div>
+        <div class="field-err" id="errSupplier"></div>
+      </div>
+
+      <div class="field">
+        <label class="field-label" for="billAmount">Amount <span class="req" aria-hidden="true">*</span></label>
+        <div class="amount-wrap">
+          <span class="cur" aria-hidden="true">Rs.</span>
+          <input class="input num" id="billAmount" type="text" inputmode="decimal" placeholder="0.00" enterkeyhint="next" aria-describedby="errAmount">
+        </div>
+        <div class="field-err" id="errAmount"></div>
+      </div>
+
+      <div class="two-col">
+        <div class="field">
+          <label class="field-label" for="billInvoice">Invoice no. <span class="req" aria-hidden="true">*</span></label>
+          <input class="input" id="billInvoice" type="text" placeholder="e.g. INV-10234" maxlength="60" enterkeyhint="next" spellcheck="false" aria-describedby="errInvoice">
+          <div class="field-err" id="errInvoice"></div>
+        </div>
+        <div class="field">
+          <label class="field-label" for="billDate">Bill date <span class="req" aria-hidden="true">*</span></label>
+          <input class="input" id="billDate" type="date" aria-describedby="errDate">
+          <div class="field-err" id="errDate"></div>
+        </div>
+      </div>
+
+      <div class="dup-warn" id="dupWarn" hidden></div>
+      <div class="form-err" id="formErr" role="alert"></div>
+    </div>
+
+    <div class="modal-foot">
+      <label class="check"><input type="checkbox" id="billAnother"> Add another after saving</label>
+      <div class="foot-btns">
+        <button type="button" class="btn btn-ghost" id="billCancel">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="billSave"><span class="spinner" aria-hidden="true"></span><span id="billSaveLabel">Save bill</span></button>
+      </div>
+    </div>
+  </form>
+</dialog>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
 <footer>
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
   Secured with Google Sign-In &middot; reads directly from your private Google Sheet
@@ -586,9 +748,10 @@ const API_OPTS = "valueRenderOption=UNFORMATTED_VALUE&dateTimeRenderOption=SERIA
 // can sign in and see any data. Both checks are enforced by Google.
 const CLIENT_ID = "848505807317-682h1an2d78ertgg190oeo9f3qalgh58.apps.googleusercontent.com";
 const SCOPES = "https://www.googleapis.com/auth/spreadsheets.readonly https://www.googleapis.com/auth/userinfo.email";
-const TOKEN_KEY = "ledger_token_v3";     // {token, exp}
+const WRITE_SCOPE = "https://www.googleapis.com/auth/spreadsheets"; // asked for only when adding a bill
+const TOKEN_KEY = "ledger_token_v3";     // {token, exp, scope}
 const EMAIL_KEY = "ledger_user_email";
-const CACHE_KEY = "ledger_cache_v4";     // last loaded data, for instant paint
+const CACHE_KEY = "ledger_cache_v5";     // last loaded data, for instant paint
 
 const $ = id => document.getElementById(id);
 
@@ -602,11 +765,13 @@ const store = {
 let accessToken = null;
 let currentUserEmail = store.get(EMAIL_KEY);
 let tokenClient = null;
+let grantedScopes = "";
+let authWaiter = null;   // set while an in-app permission request (e.g. write access) is pending
 
 (function restoreToken(){
   try{
     const t = JSON.parse(store.get(TOKEN_KEY) || "null");
-    if(t && t.token && t.exp > Date.now() + 60000) accessToken = t.token;
+    if(t && t.token && t.exp > Date.now() + 60000){ accessToken = t.token; grantedScopes = t.scope || ""; }
     else store.del(TOKEN_KEY);
   }catch(e){ store.del(TOKEN_KEY); }
 })();
@@ -619,16 +784,21 @@ function onGsiLoaded(){
     client_id: CLIENT_ID,
     scope: SCOPES,
     callback: (resp) => {
+      const waiter = authWaiter; authWaiter = null;
       $("googleSignInBtn").disabled = false;
-      if(resp.error){ showSignInError(resp.error); return; }
+      if(resp.error){ waiter ? waiter(resp.error) : showSignInError(resp.error); return; }
       accessToken = resp.access_token;
+      grantedScopes = resp.scope || SCOPES;
       const exp = Date.now() + (Number(resp.expires_in) || 3600) * 1000;
-      store.set(TOKEN_KEY, JSON.stringify({token: accessToken, exp}));
+      store.set(TOKEN_KEY, JSON.stringify({token: accessToken, exp, scope: grantedScopes}));
+      if(waiter){ waiter(null); return; }
       enterDashboard();
     },
     error_callback: (err) => {
+      const waiter = authWaiter; authWaiter = null;
       $("googleSignInBtn").disabled = false;
-      showSignInError(err && err.type ? err.type : "unknown_error");
+      const code = err && err.type ? err.type : "unknown_error";
+      waiter ? waiter(code) : showSignInError(code);
     }
   });
   $("googleSignInBtn").disabled = false;
@@ -652,6 +822,17 @@ function signIn(){
   tokenClient.requestAccessToken({ prompt: "" });
 }
 
+const hasWriteScope = () => grantedScopes.split(/\s+/).includes(WRITE_SCOPE);
+
+// Must be called directly from a click handler, or the browser blocks Google's popup
+function requestWriteAccess(){
+  return new Promise((resolve, reject) => {
+    if(!tokenClient){ reject("not_ready"); return; }
+    authWaiter = err => err ? reject(err) : hasWriteScope() ? resolve() : reject("scope_denied");
+    tokenClient.requestAccessToken({ prompt: "", scope: SCOPES + " " + WRITE_SCOPE, login_hint: currentUserEmail || undefined });
+  });
+}
+
 function signOut(){
   if(accessToken && window.google && google.accounts && google.accounts.oauth2){
     try{ google.accounts.oauth2.revoke(accessToken, () => {}); }catch(e){}
@@ -667,6 +848,8 @@ function lock(message){
   $("lockError").textContent = message || "";
   $("lockScreen").classList.remove("hidden");
   $("avatar").classList.remove("show");
+  document.body.classList.remove("authed");
+  if($("billDialog").open) $("billDialog").close();
 }
 
 async function fetchUserEmail(){
@@ -690,6 +873,7 @@ function showAccount(){
   $("accountEmail").textContent = email || "Google account";
   $("avatarLetter").textContent = (email[0] || "?").toUpperCase();
   $("avatar").classList.add("show");
+  document.body.classList.add("authed");
 }
 
 function enterDashboard(){
@@ -703,7 +887,7 @@ function enterDashboard(){
 // ---------------------------------------------------------------------------
 // Data
 // ---------------------------------------------------------------------------
-// Bill shape (compact for speed + cache size): {s: supplier, a: amount, t: local-midnight ms | null, k: sheet index}
+// Bill shape (compact for speed + cache size): {s: supplier, i: invoice, a: amount, t: local-midnight ms | null, k: sheet index}
 let BILLS = [];
 let BY_SUPPLIER = new Map();   // supplier -> bills[]
 
@@ -734,17 +918,24 @@ function parseRows(rows, k, out){
     const s = clean(r[0]);
     const a = typeof r[2] === "number" ? r[2] : 0;
     if(!s && !a) continue; // blank filler rows
-    out.push({ s: s || "(Unnamed)", a, t: serialToMs(r[3]), k });
+    out.push({ s: s || "(Unnamed)", i: clean(r[1]), a, t: serialToMs(r[3]), k });
   }
 }
 
-class HttpError extends Error{ constructor(status){ super("HTTP " + status); this.status = status; } }
+class HttpError extends Error{ constructor(status, detail){ super(detail || "HTTP " + status); this.status = status; this.detail = detail || ""; } }
 
-async function apiGet(url){
-  const res = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
-  if(!res.ok) throw new HttpError(res.status);
+async function api(url, body){
+  const opts = { headers: { Authorization: `Bearer ${accessToken}` } };
+  if(body){ opts.method = "POST"; opts.headers["Content-Type"] = "application/json"; opts.body = JSON.stringify(body); }
+  const res = await fetch(url, opts);
+  if(!res.ok){
+    let detail = "";
+    try{ detail = (await res.json()).error.message || ""; }catch(e){}
+    throw new HttpError(res.status, detail);
+  }
   return res.json();
 }
+const apiGet = url => api(url);
 const rangeFor = name => encodeURIComponent(`'${name}'!A:D`);
 
 // One batched request for all 13 sheets (was 13 separate requests).
@@ -932,76 +1123,127 @@ function renderTopSuppliers(bySup, total){
 }
 
 // ---------------------------------------------------------------------------
-// Searchable supplier picker
+// Searchable supplier picker (shared by the finder and the Add Bill form)
 // ---------------------------------------------------------------------------
 let SUPPLIERS = [];          // [{name, total, lc}] sorted by name
-let selectedSupplier = "";
-let comboMatches = [], comboActive = -1;
+const COMBOS = [];
+let comboSeq = 0;
 
 function renderSupplierOptions(bySup){
   SUPPLIERS = [...bySup.entries()]
     .map(([name, total]) => ({ name, total, lc: name.toLowerCase() }))
     .sort((a, b) => a.name.localeCompare(b.name));
-  if(selectedSupplier && !bySup.has(selectedSupplier)) setSupplier("");
-  if(!$("supplierPanel").hidden) filterSuppliers();
+  COMBOS.forEach(c => c.refresh());
 }
 
-function setSupplier(name){
-  selectedSupplier = name;
-  const t = $("supplierBtnText");
-  t.textContent = name || "Choose a supplier\u2026";
-  t.classList.toggle("placeholder", !name);
-  updateFinder();
-}
+function createCombo(root, { labelId, placeholder, allowNew = false, onChange = () => {} }){
+  const id = "cb" + (++comboSeq);
+  root.innerHTML = `
+    <button type="button" class="combo-btn" aria-haspopup="listbox" aria-expanded="false" aria-labelledby="${labelId} ${id}-text">
+      <span id="${id}-text" class="placeholder">${esc(placeholder)}</span>
+      <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M5.5 7.5l4.5 5 4.5-5z"/></svg>
+    </button>
+    <div class="combo-panel" hidden>
+      <div class="combo-search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+        <input type="search" placeholder="${allowNew ? "Search or type a new supplier…" : "Search supplier…"}" autocomplete="off" spellcheck="false"
+          enterkeyhint="done" role="combobox" aria-controls="${id}-list" aria-expanded="true" aria-autocomplete="list" aria-label="Search supplier">
+      </div>
+      <ul class="combo-list" id="${id}-list" role="listbox" aria-labelledby="${labelId}"></ul>
+    </div>`;
+  const btn = root.querySelector(".combo-btn"), text = root.querySelector(".combo-btn span");
+  const panel = root.querySelector(".combo-panel"), input = root.querySelector("input"), list = root.querySelector("ul");
+  let value = "", matches = [], active = -1;
 
-function openCombo(){
-  $("supplierPanel").hidden = false;
-  $("supplierBtn").setAttribute("aria-expanded", "true");
-  const input = $("supplierSearch");
-  input.value = "";
-  filterSuppliers();
-  input.focus();
-}
-function closeCombo(focusBtn){
-  if($("supplierPanel").hidden) return;
-  $("supplierPanel").hidden = true;
-  $("supplierBtn").setAttribute("aria-expanded", "false");
-  if(focusBtn) $("supplierBtn").focus();
-}
+  function set(name, silent){
+    value = name;
+    text.textContent = name || placeholder;
+    text.classList.toggle("placeholder", !name);
+    if(!silent) onChange(name);
+  }
+  function open(prefill){
+    panel.hidden = false;
+    btn.setAttribute("aria-expanded", "true");
+    input.value = prefill || "";
+    filter();
+    input.focus();
+  }
+  function close(focusBtn){
+    if(panel.hidden) return;
+    panel.hidden = true;
+    btn.setAttribute("aria-expanded", "false");
+    if(focusBtn) btn.focus();
+  }
+  function filter(){
+    const raw = input.value.trim().replace(/\s+/g, " "), q = raw.toLowerCase();
+    matches = q ? SUPPLIERS.filter(s => s.lc.includes(q)) : SUPPLIERS.slice();
+    // Names that start with the query come first
+    if(q) matches.sort((a, b) => (b.lc.startsWith(q) - a.lc.startsWith(q)) || a.name.localeCompare(b.name));
+    if(allowNew && q && !SUPPLIERS.some(s => s.lc === q)) matches.push({ name: raw, isNew: true });
+    active = q ? (matches.length ? 0 : -1) : matches.findIndex(s => s.name === value);
+    const hl = name => {
+      const i = q ? name.toLowerCase().indexOf(q) : -1;
+      if(i < 0) return esc(name);
+      return esc(name.slice(0, i)) + "<mark>" + esc(name.slice(i, i + q.length)) + "</mark>" + esc(name.slice(i + q.length));
+    };
+    list.innerHTML = matches.length ? matches.map((s, i) => s.isNew
+      ? `<li class="combo-opt combo-new" role="option" id="${id}-o${i}" data-i="${i}" aria-selected="false"><span class="n">
+           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+           Add “${esc(s.name)}” as new supplier</span></li>`
+      : `<li class="combo-opt" role="option" id="${id}-o${i}" data-i="${i}" aria-selected="${s.name === value}">
+           <span class="n">${hl(s.name)}</span><span class="v num">${fmtCompact(s.total)}</span></li>`).join("")
+      : `<li class="combo-empty">${!SUPPLIERS.length ? (allowNew ? "Type the supplier name" : "Loading suppliers…")
+                                                     : `No supplier matches “${esc(raw)}”`}</li>`;
+    syncActive();
+  }
+  function syncActive(){
+    list.querySelectorAll(".combo-opt.active").forEach(el => el.classList.remove("active"));
+    const el = active >= 0 ? list.querySelector(`[data-i="${active}"]`) : null;
+    if(el){ el.classList.add("active"); el.scrollIntoView({ block: "nearest" }); }
+    input.setAttribute("aria-activedescendant", el ? el.id : "");
+  }
+  function pick(i){
+    const s = matches[i];
+    if(!s) return;
+    close(true);
+    set(s.name);
+  }
 
-function filterSuppliers(){
-  const q = $("supplierSearch").value.trim().toLowerCase();
-  comboMatches = q ? SUPPLIERS.filter(s => s.lc.includes(q)) : SUPPLIERS;
-  // Names that start with the query come first
-  if(q) comboMatches = [...comboMatches].sort((a, b) => (b.lc.startsWith(q) - a.lc.startsWith(q)) || a.name.localeCompare(b.name));
-  const sel = comboMatches.findIndex(s => s.name === selectedSupplier);
-  comboActive = q ? (comboMatches.length ? 0 : -1) : sel;
-  const hl = name => {
-    if(!q) return esc(name);
-    const i = name.toLowerCase().indexOf(q);
-    return esc(name.slice(0, i)) + "<mark>" + esc(name.slice(i, i + q.length)) + "</mark>" + esc(name.slice(i + q.length));
+  btn.addEventListener("click", () => panel.hidden ? open() : close(false));
+  btn.addEventListener("keydown", e => {
+    if(e.key === "ArrowDown"){ e.preventDefault(); open(); }
+    else if(e.key.length === 1 && /\S/.test(e.key) && !e.ctrlKey && !e.metaKey && !e.altKey){
+      e.preventDefault(); open(e.key); // typing on the closed button starts a search
+    }
+  });
+  input.addEventListener("input", filter);
+  input.addEventListener("keydown", e => {
+    const n = matches.length;
+    if(e.key === "ArrowDown"){ e.preventDefault(); if(n){ active = (active + 1) % n; syncActive(); } }
+    else if(e.key === "ArrowUp"){ e.preventDefault(); if(n){ active = (active - 1 + n) % n; syncActive(); } }
+    else if(e.key === "Enter"){ e.preventDefault(); pick(active); }
+    else if(e.key === "Escape"){ e.preventDefault(); e.stopPropagation(); close(true); }
+    else if(e.key === "Tab") close(false);
+  });
+  list.addEventListener("mousedown", e => e.preventDefault()); // keep focus in the search box
+  list.addEventListener("click", e => { const o = e.target.closest(".combo-opt"); if(o) pick(+o.dataset.i); });
+  document.addEventListener("click", e => { if(!root.contains(e.target)) close(false); });
+
+  const combo = {
+    get value(){ return value; },
+    set, open, close,
+    focus(){ btn.focus(); },
+    refresh(){
+      // The finder only allows suppliers that exist; the bill form may hold a new one
+      if(value && !allowNew && !SUPPLIERS.some(s => s.name === value)) set("", true);
+      if(!panel.hidden) filter();
+    }
   };
-  $("supplierList").innerHTML = !SUPPLIERS.length ? `<li class="combo-empty">Loading suppliers\u2026</li>`
-    : !comboMatches.length ? `<li class="combo-empty">No supplier matches \u201C${esc(q)}\u201D</li>`
-    : comboMatches.map((s, i) => `<li class="combo-opt${i === comboActive ? " active" : ""}" role="option" id="sopt${i}" data-i="${i}"
-        aria-selected="${s.name === selectedSupplier}"><span class="n">${hl(s.name)}</span><span class="v num">${fmtCompact(s.total)}</span></li>`).join("");
-  syncActive();
+  COMBOS.push(combo);
+  return combo;
 }
 
-function syncActive(){
-  const list = $("supplierList");
-  list.querySelectorAll(".combo-opt.active").forEach(el => el.classList.remove("active"));
-  const el = comboActive >= 0 ? $("sopt" + comboActive) : null;
-  if(el){ el.classList.add("active"); el.scrollIntoView({ block: "nearest" }); }
-  $("supplierSearch").setAttribute("aria-activedescendant", el ? el.id : "");
-}
-
-function pickSupplier(i){
-  const s = comboMatches[i];
-  if(!s) return;
-  setSupplier(s.name);
-  closeCombo(true);
-}
+const finderCombo = createCombo($("supplierCombo"), { labelId: "supplierLabel", placeholder: "Choose a supplier…", onChange: updateFinder });
 
 // ---------------------------------------------------------------------------
 // Quick finder
@@ -1020,7 +1262,7 @@ function updateFinder(){
   const valEl = $("resultValue"), subEl = $("resultSub"), labelEl = $("resultLabel");
   const setMsg = (msg, cls) => { valEl.textContent = msg; valEl.className = "result-value num " + cls; subEl.textContent = ""; };
   const needSupplier = finderMode !== "range", needDates = finderMode !== "supplier";
-  const supplier = selectedSupplier;
+  const supplier = finderCombo.value;
   labelEl.textContent = finderMode === "range" ? "Total purchase in range"
                       : finderMode === "supplier" ? "Supplier total (all dates)" : "Supplier total in range";
 
@@ -1066,10 +1308,288 @@ function applyPreset(p){
 }
 
 // ---------------------------------------------------------------------------
+// Add bill
+// ---------------------------------------------------------------------------
+const LEDGER_YEAR = 2026;   // the Jan…Dec month tabs hold this year's bills
+class UserError extends Error{}
+class DuplicateError extends Error{ constructor(info){ super("duplicate"); this.info = info; } }
+
+const billDialog = $("billDialog");
+const billCombo = createCombo($("billSupplierCombo"), {
+  labelId: "billSupplierLabel", placeholder: "Search or add a supplier…", allowNew: true,
+  onChange: () => { setFieldErr("Supplier", ""); onBillEdit(); if(billCombo.value) $("billAmount").focus(); }
+});
+let billSaving = false, dupConfirmedKey = "";
+
+const dupKey = (supplier, invoice) => supplier.trim().toLowerCase() + "\u0001" + String(invoice).trim().toLowerCase();
+
+function parseAmount(str){
+  const t = String(str).replace(/rs\.?/i, "").replace(/[,\s]/g, "");
+  if(!/^\d+(\.\d{1,2})?$/.test(t) && !/^\.\d{1,2}$/.test(t)) return NaN;
+  return Math.round(parseFloat(t) * 100) / 100;
+}
+
+function setFieldErr(key, msg){
+  const el = $("err" + key);
+  el.textContent = msg;
+  el.closest(".field").classList.toggle("invalid", !!msg);
+}
+
+function readBillForm(){
+  const supplier = billCombo.value.trim().replace(/\s+/g, " ");
+  const invoice = $("billInvoice").value.trim();
+  const amountRaw = $("billAmount").value.trim();
+  const amount = parseAmount(amountRaw);
+  const ms = parseLocalMs($("billDate").value);
+  const d = ms === null || isNaN(ms) ? null : new Date(ms);
+  const errs = {};
+  if(!supplier) errs.Supplier = "Choose a supplier, or type a new one";
+  if(!amountRaw) errs.Amount = "Enter the bill amount";
+  else if(!(amount > 0)) errs.Amount = "Enter a valid amount, e.g. 12500 or 12,500.50";
+  else if(amount >= 1e11) errs.Amount = "That amount looks too large — please check it";
+  if(!invoice) errs.Invoice = "Enter the invoice number";
+  if(!d) errs.Date = "Pick the bill date";
+  else if(d.getFullYear() !== LEDGER_YEAR) errs.Date = `Month tabs are for ${LEDGER_YEAR} — pick a ${LEDGER_YEAR} date`;
+  return { supplier, invoice, amount, d, errs };
+}
+
+// Live feedback while typing: destination tab, "new supplier" tag, duplicate reset
+function onBillEdit(){
+  const ms = parseLocalMs($("billDate").value);
+  const d = ms === null || isNaN(ms) ? null : new Date(ms);
+  $("billDest").innerHTML = d && d.getFullYear() === LEDGER_YEAR
+    ? `Saves to the <b>${MONTH_SHEETS[d.getMonth()]}</b> tab · columns A–D`
+    : `Saves to the month tab of the bill date`;
+  const name = billCombo.value;
+  $("supplierHint").innerHTML = name && !SUPPLIERS.some(s => s.name === name)
+    ? `<span class="tag">NEW</span> Not in your ledger yet — check the spelling before saving` : "";
+  if(dupConfirmedKey && dupConfirmedKey !== dupKey(billCombo.value, $("billInvoice").value)){
+    dupConfirmedKey = "";
+    $("dupWarn").hidden = true;
+    $("billSaveLabel").textContent = "Save bill";
+  }
+  $("formErr").textContent = "";
+}
+
+function showDuplicate(f, info){
+  dupConfirmedKey = dupKey(f.supplier, f.invoice);
+  $("dupWarn").innerHTML = `<b>Possible duplicate.</b> ${esc(f.supplier)} already has invoice <b>${esc(f.invoice)}</b>` +
+    ` in the ${esc(info.tab)} tab (${fmtMoney(info.amount)}). Press <b>Save anyway</b> if this is a different bill.`;
+  $("dupWarn").hidden = false;
+  $("billSaveLabel").textContent = "Save anyway";
+  $("dupWarn").scrollIntoView({ block: "nearest", behavior: "smooth" });
+}
+
+function resetBillForm(keepContext){
+  if(!keepContext){
+    billCombo.set("", true);
+    $("billDate").value = toLocalISODate(new Date());
+    $("formOk").textContent = "";
+  }
+  $("billInvoice").value = "";
+  $("billAmount").value = "";
+  ["Supplier", "Amount", "Invoice", "Date"].forEach(k => setFieldErr(k, ""));
+  dupConfirmedKey = "";
+  $("dupWarn").hidden = true;
+  $("billSaveLabel").textContent = "Save bill";
+  onBillEdit();
+}
+
+function isBillDirty(){ return !!(billCombo.value || $("billInvoice").value.trim() || $("billAmount").value.trim()); }
+
+function openBillForm(){
+  if(!accessToken) return;
+  if(hasWriteScope()){ showBillForm(); return; }
+  requestWriteAccess().then(showBillForm).catch(code => {
+    toast(code === "popup_closed" ? "Permission window closed — no changes made."
+        : code === "scope_denied" || code === "access_denied" ? "Adding bills needs permission to edit the Sheet. Tick the Google Sheets box when asked."
+        : code === "popup_failed_to_open" ? "Your browser blocked Google's permission window. Allow pop-ups and try again."
+        : "Couldn't get permission to edit the Sheet. Please try again.", "error");
+  });
+}
+
+function showBillForm(){
+  if(billDialog.open) return;
+  resetBillForm(false);
+  billDialog.showModal();
+  // Desktop: jump straight into the supplier search. Touch: don't pop the keyboard uninvited.
+  // (deferred so the click that opened the dialog doesn't immediately close the list again)
+  if(matchMedia("(pointer: fine)").matches) setTimeout(() => billCombo.open(), 0); else billCombo.focus();
+}
+
+function closeBillForm(){ if(!billSaving) billDialog.close(); }
+
+function setSaving(on){
+  billSaving = on;
+  $("billSave").disabled = on;
+  $("billSave").classList.toggle("loading", on);
+  $("billCancel").disabled = on;
+  if(on) $("billSaveLabel").textContent = "Saving…";
+}
+
+async function submitBill(e){
+  e.preventDefault();
+  if(billSaving) return;
+  const f = readBillForm();
+  ["Supplier", "Amount", "Invoice", "Date"].forEach(k => setFieldErr(k, f.errs[k] || ""));
+  $("formErr").textContent = "";
+  $("formOk").textContent = "";
+  const firstErr = ["Supplier", "Amount", "Invoice", "Date"].find(k => f.errs[k]);
+  if(firstErr){
+    if(firstErr === "Supplier") billCombo.focus(); else $("bill" + firstErr).focus();
+    return;
+  }
+  const key = dupKey(f.supplier, f.invoice);
+  const force = dupConfirmedKey === key;
+  if(!force){
+    const dup = BILLS.find(b => dupKey(b.s, b.i) === key);
+    if(dup){ showDuplicate(f, { tab: SHEETS[dup.k], amount: dup.a }); return; }
+  }
+
+  setSaving(true);
+  let ok = false;
+  try{
+    const res = await saveBill(f, force);
+    ok = true;
+    // Show it on the dashboard immediately — no full reload needed
+    BILLS.push({ s: f.supplier, i: f.invoice, a: f.amount, t: f.d.getTime(), k: 1 + f.d.getMonth() });
+    setData(BILLS.slice());
+    store.set(CACHE_KEY, JSON.stringify({ at: Date.now(), email: currentUserEmail, bills: BILLS }));
+    const msg = `Saved ${fmtMoney(f.amount)} for ${f.supplier} → ${res.tab} tab, row ${res.row}`;
+    if($("billAnother").checked){
+      resetBillForm(true);           // keep supplier + date for fast batch entry
+      $("formOk").textContent = "✓ " + msg;
+      $("billAmount").focus();
+    } else {
+      billDialog.close();
+      toast(msg, "success");
+    }
+  }catch(err){
+    if(err instanceof DuplicateError){ showDuplicate(f, err.info); return; }
+    if(err.status === 401){ billDialog.close(); lock("Your session expired. Please sign in again."); return; }
+    $("formErr").textContent = billErrorMessage(err);
+  }finally{
+    setSaving(false);
+    $("billSaveLabel").textContent = dupConfirmedKey && !ok ? "Save anyway" : "Save bill";
+  }
+}
+
+function billErrorMessage(err){
+  if(err instanceof UserError) return err.message;
+  if(err.status === 403){
+    if(/scope/i.test(err.detail)){ grantedScopes = ""; return "Edit permission is missing. Close this form, press Add bill again and allow Google Sheets access."; }
+    return `${currentUserEmail || "This account"} can view the Sheet but not edit it. Ask the owner to give you Editor access, then try again.`;
+  }
+  if(err.status === 429) return "Google is rate-limiting requests. Wait a few seconds and try again.";
+  if(err.stage === "write") return "The connection dropped while saving — the bill may or may not have been saved. Press Refresh on the dashboard and check before trying again.";
+  if(!err.status) return "Couldn't reach Google. Check your internet connection and try again — nothing was saved.";
+  return `Google Sheets returned an error (${err.status})${err.detail ? ": " + err.detail : ""}. Nothing was saved.`;
+}
+
+// Writes one bill into the first free row after the last bill of the month tab.
+// Only A–D are touched (values + matching number formats), so formulas or notes
+// in other columns stay intact. The tab is re-read right before writing so the
+// row is correct even if someone else added a bill meanwhile.
+async function saveBill(f, force){
+  const tab = MONTH_SHEETS[f.d.getMonth()];
+  const fmtFields = "sheets(properties(sheetId,gridProperties(rowCount)),data(rowData(values(userEnteredFormat(numberFormat)))))";
+  let vals, meta;
+  try{
+    [vals, meta] = await Promise.all([
+      apiGet(`${API}/values/${rangeFor(tab)}?${API_OPTS}`),
+      apiGet(`${API}?ranges=${encodeURIComponent(`'${tab}'!C:D`)}&fields=${encodeURIComponent(fmtFields)}`)
+    ]);
+  }catch(e){
+    if(e.status === 400) throw new UserError(`There's no "${tab}" tab in the Sheet yet. Create it with the "Supplier Name" header row, then try again. Nothing was saved.`);
+    throw e;
+  }
+
+  const rows = vals.values || [];
+  const header = rows.findIndex(r => clean(r && r[0]).toLowerCase() === HEADER_MARKER);
+  if(header < 0) throw new UserError(`The "${tab}" tab has no "Supplier Name" header row, so the bill can't be placed safely. Nothing was saved.`);
+
+  const key = dupKey(f.supplier, f.invoice);
+  let last = header;
+  for(let i = header + 1; i < rows.length; i++){
+    const r = rows[i] || [];
+    const s = clean(r[0]);
+    if(s || typeof r[2] === "number"){
+      last = i;
+      if(!force && dupKey(s, clean(r[1])) === key) throw new DuplicateError({ tab, amount: typeof r[2] === "number" ? r[2] : 0 });
+    }
+  }
+  const target = last + 1;                               // 0-based row index to write
+  const sheet = meta.sheets[0];
+  const sheetId = sheet.properties.sheetId;
+  const rowCount = sheet.properties.gridProperties.rowCount;
+  const fmtRows = (sheet.data && sheet.data[0] && sheet.data[0].rowData) || [];
+  // Copy the number format of the nearest bill above, so the new row looks like the rest
+  const formatFrom = col => {
+    for(let i = last; i > header; i--){
+      const v = fmtRows[i] && fmtRows[i].values && fmtRows[i].values[col];
+      if(v && v.userEnteredFormat && v.userEnteredFormat.numberFormat) return v.userEnteredFormat.numberFormat;
+    }
+    return null;
+  };
+  const amountFmt = formatFrom(0);
+  const dateFmt = formatFrom(1) || { type: "DATE", pattern: "dd/mm/yyyy" };
+  // Pure numbers are stored as numbers (like typing them in Sheets); anything else as text, never as a formula
+  const invoiceValue = /^[1-9]\d{0,14}$/.test(f.invoice) ? { numberValue: Number(f.invoice) } : { stringValue: f.invoice };
+  const serial = Date.UTC(f.d.getFullYear(), f.d.getMonth(), f.d.getDate()) / 86400000 + 25569;
+  const cell = (col, values, fields) => ({ updateCells: { start: { sheetId, rowIndex: target, columnIndex: col }, rows: [{ values }], fields } });
+
+  const requests = [];
+  if(target >= rowCount) requests.push({ appendDimension: { sheetId, dimension: "ROWS", length: target - rowCount + 1 } });
+  requests.push(cell(0, [
+    { userEnteredValue: { stringValue: f.supplier } },
+    { userEnteredValue: invoiceValue },
+    { userEnteredValue: { numberValue: f.amount } }
+  ], "userEnteredValue"));
+  if(amountFmt) requests.push(cell(2, [{ userEnteredFormat: { numberFormat: amountFmt } }], "userEnteredFormat.numberFormat"));
+  requests.push(cell(3, [{ userEnteredValue: { numberValue: serial }, userEnteredFormat: { numberFormat: dateFmt } }], "userEnteredValue,userEnteredFormat.numberFormat"));
+
+  try{
+    await api(`${API}:batchUpdate`, { requests });
+  }catch(e){
+    e.stage = "write";
+    throw e;
+  }
+  return { tab, row: target + 1 };
+}
+
+let toastTimer = 0;
+function toast(msg, type){
+  const t = $("toast");
+  t.textContent = msg;
+  t.className = "toast show" + (type === "error" ? " error" : "");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove("show"), type === "error" ? 6000 : 4000);
+}
+
+// ---------------------------------------------------------------------------
 // Events
 // ---------------------------------------------------------------------------
 $("googleSignInBtn").addEventListener("click", signIn);
 $("refreshBtn").addEventListener("click", () => loadAll(true));
+$("addBillBtn").addEventListener("click", openBillForm);
+$("addBillFab").addEventListener("click", openBillForm);
+$("billForm").addEventListener("submit", submitBill);
+$("billClose").addEventListener("click", closeBillForm);
+$("billCancel").addEventListener("click", closeBillForm);
+billDialog.addEventListener("cancel", e => { if(billSaving) e.preventDefault(); });           // Esc
+billDialog.addEventListener("click", e => { if(e.target === billDialog && !isBillDirty()) closeBillForm(); }); // backdrop
+billDialog.addEventListener("close", () => COMBOS.forEach(c => c.close(false)));
+["billInvoice", "billAmount", "billDate"].forEach(id => $(id).addEventListener("input", () => {
+  setFieldErr(id.replace("bill", ""), "");
+  onBillEdit();
+}));
+$("billAmount").addEventListener("blur", () => {
+  const a = parseAmount($("billAmount").value);
+  if(a > 0) $("billAmount").value = nf2.format(a);   // tidy to 12,500.00 once typed
+});
+$("billAmount").addEventListener("keydown", e => { if(e.key === "Enter"){ e.preventDefault(); $("billInvoice").focus(); } });
+$("billDate").min = `${LEDGER_YEAR}-01-01`;
+$("billDate").max = `${LEDGER_YEAR}-12-31`;
 $("signOutBtn").addEventListener("click", e => { e.stopPropagation(); signOut(); });
 
 const avatar = $("avatar"), menu = $("accountMenu");
@@ -1092,28 +1612,6 @@ $("presetChips").addEventListener("click", e => {
   document.querySelectorAll("#presetChips .chip").forEach(c => c.classList.remove("active"));
   updateFinder();
 }));
-$("supplierBtn").addEventListener("click", () => $("supplierPanel").hidden ? openCombo() : closeCombo(false));
-$("supplierBtn").addEventListener("keydown", e => {
-  if(e.key === "ArrowDown" || (e.key.length === 1 && /\S/.test(e.key))){
-    // Typing on the closed button opens the search and starts filtering
-    e.preventDefault(); openCombo();
-    if(e.key.length === 1){ $("supplierSearch").value = e.key; filterSuppliers(); }
-  }
-});
-$("supplierSearch").addEventListener("input", filterSuppliers);
-$("supplierSearch").addEventListener("keydown", e => {
-  const n = comboMatches.length;
-  if(e.key === "ArrowDown"){ e.preventDefault(); if(n){ comboActive = (comboActive + 1) % n; syncActive(); } }
-  else if(e.key === "ArrowUp"){ e.preventDefault(); if(n){ comboActive = (comboActive - 1 + n) % n; syncActive(); } }
-  else if(e.key === "Enter"){ e.preventDefault(); pickSupplier(comboActive); }
-  else if(e.key === "Escape"){ e.preventDefault(); e.stopPropagation(); closeCombo(true); }
-  else if(e.key === "Tab") closeCombo(false);
-});
-$("supplierList").addEventListener("mousedown", e => e.preventDefault()); // keep focus in the search box
-$("supplierList").addEventListener("click", e => {
-  const o = e.target.closest(".combo-opt"); if(o) pickSupplier(+o.dataset.i);
-});
-document.addEventListener("click", e => { if(!$("supplierCombo").contains(e.target)) closeCombo(false); });
 
 // Chart: event delegation (one listener, not one per bar) + hover tooltip
 const chartEl = $("chart"), tip = $("tooltip");
