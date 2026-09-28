@@ -27,3 +27,10 @@ Access requires both: the Google account is a Test user on the OAuth consent scr
 **One-time setup to enable saving:**
 1. Google Cloud Console → *OAuth consent screen* → *Data access / Scopes*: add `https://www.googleapis.com/auth/spreadsheets`.
 2. Everyone who adds bills needs **Editor** access on the Sheet. Viewers can still see the dashboard, and they get a clear message if they try to save.
+
+## Install as an app
+The dashboard is an installable web app (PWA) with the Elite Colour World icon.
+- **Android / Chrome / Edge (phone or PC):** open the site and tap **Install**. The button is on the sign-in screen, in the account menu and on a banner on phones. Chrome's own "Install app" menu item also works.
+- **iPhone / iPad:** open the site in **Safari → Share → Add to Home Screen**. The app shows these steps too.
+
+Files: `manifest.webmanifest` (name, icon, colours), `sw.js` (service worker: caches only this site's own files; Google sign-in and Sheet data always come live from Google), `icons/`.

@@ -1,0 +1,18 @@
+{
+  "name": "Elite Colour World · Purchase Ledger",
+  "short_name": "Elite Ledger",
+  "description": "Live purchase dashboard for Elite Colour World.",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0D1211",
+  "theme_color": "#0D1211",
+  "categories": ["business", "finance", "productivity"],
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
