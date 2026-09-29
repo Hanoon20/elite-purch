@@ -735,6 +735,25 @@ function showBillForm(){
 
 function closeBillForm(){ if(!billSaving) billDialog.close(); }
 
+// iPhone keyboard: iOS doesn't shrink the page when the keyboard opens, so a bottom
+// sheet would sit behind it. Lift the sheet above the keyboard and keep the field in view.
+function fitSheetToKeyboard(){
+  const vv = window.visualViewport;
+  if(!vv || !billDialog.open || !matchMedia("(max-width: 679px)").matches){
+    billDialog.style.marginBottom = ""; billDialog.style.maxHeight = ""; return;
+  }
+  const hidden = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);   // px covered by the keyboard
+  billDialog.style.marginBottom = hidden ? hidden + "px" : "";
+  billDialog.style.maxHeight = hidden ? (vv.height - 8) + "px" : "";
+}
+if(window.visualViewport){
+  visualViewport.addEventListener("resize", fitSheetToKeyboard);
+  visualViewport.addEventListener("scroll", fitSheetToKeyboard);
+}
+billDialog.addEventListener("focusin", e => {
+  if(e.target.matches("input")) setTimeout(() => e.target.scrollIntoView({ block: "center", behavior: "smooth" }), 300);
+});
+
 function setSaving(on){
   billSaving = on;
   $("billSave").disabled = on;
@@ -894,7 +913,7 @@ $("billClose").addEventListener("click", closeBillForm);
 $("billCancel").addEventListener("click", closeBillForm);
 billDialog.addEventListener("cancel", e => { if(billSaving) e.preventDefault(); });           // Esc
 billDialog.addEventListener("click", e => { if(e.target === billDialog && !isBillDirty()) closeBillForm(); }); // backdrop
-billDialog.addEventListener("close", () => COMBOS.forEach(c => c.close(false)));
+billDialog.addEventListener("close", () => { COMBOS.forEach(c => c.close(false)); fitSheetToKeyboard(); });
 ["billInvoice", "billAmount", "billDate"].forEach(id => $(id).addEventListener("input", () => {
   setFieldErr(id.replace("bill", ""), "");
   onBillEdit();

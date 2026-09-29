@@ -405,7 +405,8 @@
   .modal::backdrop{background:rgba(3,5,5,.66);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);}
   @keyframes modalIn{from{opacity:0;transform:translateY(12px) scale(.98);}to{opacity:1;transform:none;}}
   @keyframes sheetUp{from{transform:translateY(100%);}to{transform:none;}}
-  .modal form{display:flex;flex-direction:column;flex:1;min-height:0;}
+  /* flex-basis auto (not 0%): iOS Safari collapses 0%-basis children of an auto-height dialog to zero height */
+  .modal form{display:flex;flex-direction:column;flex:1 1 auto;min-height:0;}
   .modal-head{display:flex;align-items:center;gap:12px;padding:18px 18px 16px 20px;border-bottom:1px solid var(--border);}
   .modal-icon{width:42px;height:42px;border-radius:13px;flex-shrink:0;display:grid;place-items:center;
     background:linear-gradient(135deg,#F3D26B,#B8860B);box-shadow:0 8px 18px -8px rgba(226,180,58,.8);}
@@ -418,7 +419,7 @@
     display:grid;place-items:center;cursor:pointer;flex-shrink:0;transition:background .15s ease,color .15s ease;}
   .icon-btn:hover{background:var(--panel-alt);color:var(--text);}
   .icon-btn svg{width:18px;height:18px;}
-  .modal-body{padding:18px 20px 20px;overflow-y:auto;overscroll-behavior:contain;display:grid;gap:18px;flex:1;min-height:0;}
+  .modal-body{padding:18px 20px 20px;overflow-y:auto;overscroll-behavior:contain;display:grid;gap:18px;flex:1 1 auto;min-height:0;-webkit-overflow-scrolling:touch;}
   .modal-foot{
     display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
     padding:14px 20px calc(14px + env(safe-area-inset-bottom));border-top:1px solid var(--border);background:rgba(0,0,0,.14);
