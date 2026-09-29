@@ -34,3 +34,11 @@ The dashboard is an installable web app (PWA) with the Elite Colour World icon.
 - **iPhone / iPad:** open the site in **Safari → Share → Add to Home Screen**. The app shows these steps too.
 
 Files: `manifest.webmanifest` (name, icon, colours), `sw.js` (service worker: caches only this site's own files; Google sign-in and Sheet data always come live from Google), `icons/`.
+
+## Security
+- **Who can see data:** only Google accounts on the OAuth *Test users* list **and** shared on the Sheet. Google enforces both checks. Keep the Sheet's *General access* set to **Restricted**.
+- **Content-Security-Policy:** only `app.js` and Google's sign-in script can run, and data can only be sent to Google. No inline scripts.
+- **Auto-lock:** after 30 minutes idle, or when the 1-hour Google session ends, the app wipes the token and the cached data and returns to sign-in.
+- **No storage beyond the session:** the token and data live in `sessionStorage` (cleared when the tab or app closes). The service worker never caches Google data.
+- **Can't be embedded:** the page blanks itself if loaded inside another site's frame.
+- Supplier names are HTML-escaped, and values are written to the Sheet as plain values (never formulas).
