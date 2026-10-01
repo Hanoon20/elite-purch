@@ -319,7 +319,7 @@ function setData(bills){
     arr.push(b);
   }
   // Paint on the next frame so input stays responsive
-  requestAnimationFrame(render);
+  requestAnimationFrame(() => { render(); if(!svView.hidden) renderSupplierView(); });
 }
 
 // ---------------------------------------------------------------------------
@@ -615,6 +615,136 @@ function applyPreset(p){
   document.querySelectorAll("#presetChips .chip").forEach(c => c.classList.toggle("active", c.dataset.preset === p));
   updateFinder();
 }
+
+// ---------------------------------------------------------------------------
+// Supplier bills page: pick a supplier + period, see every bill (uses the data already loaded)
+// ---------------------------------------------------------------------------
+const dashView = $("dashView"), svView = $("supplierView");
+const MONTH_LONG = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+let svPeriod = "thisMonth";
+const svCombo = createCombo($("svCombo"), { labelId: "svSupLabel", placeholder: "Choose a supplier…", onChange: () => renderSupplierView() });
+
+const fmtDay = ms => {
+  const d = new Date(ms);
+  return `${String(d.getDate()).padStart(2,"0")} ${MONTH_LONG[d.getMonth()].slice(0,3)} ${d.getFullYear()}`;
+};
+
+// Returns {from, to} in local-midnight ms, or {msg} when custom dates are incomplete
+function svRange(){
+  const now = new Date(), y = now.getFullYear(), m = now.getMonth();
+  const ms = (yy, mm, dd) => new Date(yy, mm, dd).getTime();
+  switch(svPeriod){
+    case "thisMonth": return { from: ms(y, m, 1),     to: ms(y, m + 1, 0) };
+    case "lastMonth": return { from: ms(y, m - 1, 1), to: ms(y, m, 0) };
+    case "last3":     return { from: ms(y, m - 2, 1), to: ms(y, m + 1, 0) };
+    case "ytd":       return { from: ms(y, 0, 1),     to: ms(y, 11, 31) };
+    case "custom": {
+      const f = parseLocalMs($("svFrom").value), t = parseLocalMs($("svTo").value);
+      if(f === null || t === null) return { msg: "Pick both From and To dates." };
+      if(f > t) return { msg: "⚠️ From date is after To date." };
+      return { from: f, to: t };
+    }
+    default: return { from: -Infinity, to: Infinity };
+  }
+}
+
+function svPeriodLabel(r){
+  if(svPeriod === "all") return "All time";
+  if(svPeriod === "thisMonth" || svPeriod === "lastMonth"){
+    const d = new Date(r.from); return `${MONTH_LONG[d.getMonth()]} ${d.getFullYear()}`;
+  }
+  return `${fmtDay(r.from)} – ${fmtDay(r.to)}`;
+}
+
+function renderSupplierView(){
+  const out = $("svOut");
+  const card = msg => { out.innerHTML = `<div class="card" style="margin-top:14px"><div class="empty">${msg}</div></div>`; };
+  const supplier = svCombo.value;
+
+  if(!BILLS.length){ card("Loading bills…"); return; }
+  if(!supplier){ card("Choose a supplier to see their bills."); return; }
+  const r = svRange();
+  if(r.msg){ card(esc(r.msg)); return; }
+
+  const all = BY_SUPPLIER.get(supplier) || [];
+  const undated = all.filter(b => b.t === null).length;
+  const list = all.filter(b => b.t === null ? svPeriod === "all" : (b.t >= r.from && b.t <= r.to));
+  // newest first; undated bills (all-time view only) go last
+  list.sort((a, b) => (a.t === null) - (b.t === null) || (b.t || 0) - (a.t || 0) || b.k - a.k);
+
+  const total = list.reduce((s, b) => s + b.a, 0);
+  const biggest = list.reduce((m, b) => Math.max(m, b.a), 0);
+  const stat = (cls, label, value, sub) =>
+    `<div class="sv-stat ${cls}"><div class="k">${label}</div><div class="v num" title="${esc(value.full || "")}">${esc(value.text)}</div>${sub ? `<div class="s">${esc(sub)}</div>` : ""}</div>`;
+  const money = n => ({ text: fmtCompact(n), full: fmtMoney(n) });
+
+  let html = `<div class="sv-stats">` +
+    stat("main", "Total", money(total), `${fmtInt(list.length)} bill${list.length === 1 ? "" : "s"} · ${svPeriodLabel(r)}`) +
+    stat("", "Bills", { text: fmtInt(list.length) }) +
+    stat("", "Average", money(list.length ? total / list.length : 0)) +
+    stat("", "Largest", money(biggest)) +
+    `</div>`;
+
+  html += `<section class="card" aria-label="Bills"><div class="sv-head"><div class="sv-name">${esc(supplier)}</div><div class="sv-period">${esc(svPeriodLabel(r))}</div></div>`;
+
+  if(!list.length){
+    html += `<div class="empty">No bills for this supplier in this period.</div>`;
+  } else {
+    // group by month (list is already sorted)
+    let groupKey = null, groupSum = 0, groupHtml = "", groupLabel = "";
+    const flush = () => {
+      if(groupKey === null) return;
+      html += `<div class="sv-month"><span class="m">${esc(groupLabel)}</span><span class="t num">${fmtMoney(groupSum)}</span></div>` + groupHtml;
+    };
+    for(const b of list){
+      const d = b.t === null ? null : new Date(b.t);
+      const key = d ? d.getFullYear() * 12 + d.getMonth() : "nodate";
+      if(key !== groupKey){
+        flush();
+        groupKey = key; groupSum = 0; groupHtml = "";
+        groupLabel = d ? `${MONTH_LONG[d.getMonth()]} ${d.getFullYear()}` : "No date";
+      }
+      groupSum += b.a;
+      groupHtml += `<div class="sv-row"><div class="sv-date">${b.t === null ? "—" : fmtDay(b.t)}</div>` +
+        `<div class="sv-inv${b.i ? "" : " none"}">${b.i ? esc(b.i) : "No invoice no."}</div>` +
+        `<div class="sv-amt num">${fmtMoney(b.a)}</div></div>`;
+    }
+    flush();
+    html += `<div class="sv-foot"><span>Total (${fmtInt(list.length)} bill${list.length === 1 ? "" : "s"})</span><span class="num">${fmtMoney(total)}</span></div>`;
+  }
+  if(undated && svPeriod !== "all") html += `<div class="sv-note">${undated} bill${undated === 1 ? " has" : "s have"} no date and show only under All time.</div>`;
+  html += `</section>`;
+  out.innerHTML = html;
+}
+
+function route(){
+  const onSupplier = location.hash === "#suppliers";
+  dashView.hidden = onSupplier;
+  svView.hidden = !onSupplier;
+  if(onSupplier) renderSupplierView();
+  window.scrollTo(0, 0);
+}
+
+$("openSupBtn").addEventListener("click", () => { location.hash = "suppliers"; });
+$("svBack").addEventListener("click", () => { location.hash = "dashboard"; });
+window.addEventListener("hashchange", route);
+
+$("svChips").addEventListener("click", e => {
+  const c = e.target.closest(".chip"); if(!c) return;
+  svPeriod = c.dataset.p;
+  document.querySelectorAll("#svChips .chip").forEach(x => x.classList.toggle("active", x === c));
+  $("svCustom").hidden = svPeriod !== "custom";
+  if(svPeriod === "custom" && !$("svFrom").value){
+    const n = new Date();
+    $("svFrom").value = toLocalISODate(new Date(n.getFullYear(), n.getMonth(), 1));
+    $("svTo").value = toLocalISODate(n);
+  }
+  renderSupplierView();
+});
+["svFrom", "svTo"].forEach(id => {
+  $(id).addEventListener("change", renderSupplierView);
+  $(id).addEventListener("click", e => { try{ e.currentTarget.showPicker(); }catch(err){} });
+});
 
 // ---------------------------------------------------------------------------
 // Add bill
@@ -1027,6 +1157,7 @@ if("serviceWorker" in navigator && (location.protocol === "https:" || location.h
 // Boot
 // ---------------------------------------------------------------------------
 applyPreset("thisMonth");
+route();
 
 { // Explain an auto-lock on the sign-in screen
   const msg = store.get(LOCK_MSG_KEY);
