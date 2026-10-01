@@ -2,7 +2,7 @@
 // Only this site's own files are cached. Google sign-in, Sheets data and fonts are
 // never touched here, so ledger data always comes live from Google and is never
 // stored by the service worker.
-const CACHE = "elite-ledger-v4";
+const CACHE = "elite-ledger-v5";
 const SHELL = ["./", "./index.html", "./app.js", "./manifest.webmanifest",
   "./icons/icon-192.png", "./icons/icon-512.png", "./icons/icon-maskable-512.png",
   "./icons/apple-touch-icon.png", "./icons/icon-32.png"];
