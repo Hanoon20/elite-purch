@@ -503,6 +503,40 @@
   footer{max-width:1080px;margin:32px auto 0;padding:0 16px;text-align:center;color:var(--muted);font-size:11.5px;}
   footer svg{width:12px;height:12px;vertical-align:-2px;margin-right:4px;}
 
+
+  /* ---------- Supplier bills page ---------- */
+  .sv-top{margin-bottom:2px;}
+  #supplierView .sec-head{margin-top:14px;}
+  .sv-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:14px 0;}
+  .sv-stat{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:12px 14px;min-width:0;}
+  .sv-stat .k{font-size:11.5px;color:var(--text-2);font-weight:600;}
+  .sv-stat .v{font-size:clamp(14px,4.2vw,20px);margin-top:5px;white-space:nowrap;line-height:1.2;}
+  .sv-stat.main{grid-column:1 / -1;background:linear-gradient(135deg,rgba(226,180,58,.14),rgba(174,182,178,.10));border-color:rgba(226,180,58,.28);}
+  .sv-stat.main .v{font-size:clamp(24px,8vw,34px);white-space:normal;overflow-wrap:anywhere;}
+  .sv-stat .s{font-size:11.5px;color:var(--muted);margin-top:4px;}
+  .sv-head{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:4px 12px;padding-bottom:12px;}
+  .sv-name{font-size:15px;font-weight:700;overflow-wrap:anywhere;}
+  .sv-period{font-size:12px;color:var(--muted);}
+  .sv-month{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:16px 0 8px;border-bottom:1px solid var(--border-strong);}
+  .sv-month:first-of-type{padding-top:4px;}
+  .sv-month .m{font-size:13px;font-weight:700;color:var(--brand);}
+  .sv-month .t{font-size:12px;color:var(--muted);}
+  .sv-row{display:grid;grid-template-columns:1fr auto;align-items:center;gap:2px 12px;padding:11px 0;border-bottom:1px solid var(--border);}
+  .sv-inv{grid-column:1;grid-row:1;font-size:13.5px;font-weight:600;overflow-wrap:anywhere;min-width:0;}
+  .sv-inv.none{color:var(--muted);font-weight:500;}
+  .sv-date{grid-column:1;grid-row:2;font-size:12px;color:var(--muted);}
+  .sv-amt{grid-column:2;grid-row:1 / span 2;font-size:13.5px;text-align:right;white-space:nowrap;}
+  .sv-foot{display:flex;justify-content:space-between;gap:10px;padding-top:14px;font-size:13px;font-weight:700;}
+  .sv-note{font-size:12px;color:var(--amber);margin-top:12px;}
+  @media(min-width:680px){
+    .sv-stats{grid-template-columns:1.6fr 1fr 1fr 1fr;}
+    .sv-stat.main{grid-column:auto;}
+    .sv-row{grid-template-columns:130px 1fr auto;}
+    .sv-date{grid-column:1;grid-row:1;font-size:12.5px;}
+    .sv-inv{grid-column:2;grid-row:1;}
+    .sv-amt{grid-column:3;grid-row:1;}
+  }
+
   @media(min-width:680px){
     .authed .add-btn{display:inline-flex;}
     .overview{grid-template-columns:1.2fr 1fr;}
@@ -656,7 +690,7 @@
   </div>
 </header>
 
-<main>
+<main id="dashView">
   <div class="status-bar">
     <span id="updatedAt">Loading data&hellip;</span>
     <span id="statusMsg" role="status"></span>
@@ -689,7 +723,11 @@
   </section>
 
   <!-- Finder -->
-  <div class="sec-head"><div><div class="sec-title">Quick Finder</div><div class="sec-sub">Totals by date range and supplier</div></div></div>
+  <div class="sec-head"><div><div class="sec-title">Quick Finder</div><div class="sec-sub">Totals by date range and supplier</div></div>
+    <button id="openSupBtn" class="btn" type="button">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg>
+      Supplier bills
+    </button></div>
   <section class="card finder-card" aria-label="Quick finder">
     <div class="tabs" role="tablist">
       <button class="tab" role="tab" aria-selected="true" data-mode="range" type="button">Date range</button>
@@ -741,6 +779,41 @@
   <div class="sec-head"><div><div class="sec-title">Top 5 Suppliers</div><div class="sec-sub">By total purchase value</div></div></div>
   <section class="card" id="topSuppliersPanel" aria-label="Top suppliers"><div class="empty">Loading&hellip;</div></section>
 </main>
+
+<main id="supplierView" hidden>
+  <div class="sv-top">
+    <button id="svBack" class="btn" type="button">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>
+      Dashboard
+    </button>
+  </div>
+  <div class="sec-head"><div><div class="sec-title">Supplier Bills</div><div class="sec-sub">Choose a supplier and a period to see every bill</div></div></div>
+  <section class="card finder-card" aria-label="Supplier bills filter">
+    <div class="fields">
+      <div class="field">
+        <span class="field-label" id="svSupLabel">Supplier</span>
+        <div class="combo" id="svCombo"></div>
+      </div>
+      <div class="field">
+        <span class="field-label">Period</span>
+        <div class="chips" id="svChips">
+          <button class="chip active" type="button" data-p="thisMonth">This month</button>
+          <button class="chip" type="button" data-p="lastMonth">Last month</button>
+          <button class="chip" type="button" data-p="last3">Last 3 months</button>
+          <button class="chip" type="button" data-p="ytd">This year</button>
+          <button class="chip" type="button" data-p="all">All time</button>
+          <button class="chip" type="button" data-p="custom">Custom</button>
+        </div>
+      </div>
+      <div class="two-col" id="svCustom" hidden>
+        <div class="field"><label class="field-label" for="svFrom">From</label><input type="date" id="svFrom"></div>
+        <div class="field"><label class="field-label" for="svTo">To</label><input type="date" id="svTo"></div>
+      </div>
+    </div>
+  </section>
+  <div id="svOut" aria-live="polite"></div>
+</main>
+
 
 <button id="addBillFab" class="fab" type="button" aria-label="Add new bill">
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
