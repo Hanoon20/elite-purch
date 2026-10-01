@@ -158,7 +158,7 @@
   #statusMsg:empty{display:none;}
 
   /* ---------- Section heading ---------- */
-  .sec-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:28px 2px 12px;}
+  .sec-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:44px 2px 14px;}
   .sec-title{font-family:var(--display);font-size:16px;font-weight:700;letter-spacing:-.01em;}
   .sec-sub{font-size:12px;color:var(--muted);}
 
@@ -195,8 +195,8 @@
   .pill b{color:var(--text);font-weight:600;}
 
   /* ---------- KPI grid ---------- */
-  .overview{display:grid;gap:12px;}
-  .kpi-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .overview{display:grid;gap:16px;}
+  .kpi-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
   .kpi{
     position:relative;overflow:hidden;container-type:inline-size;
     padding:16px;transition:transform .18s ease, border-color .18s ease;
@@ -504,6 +504,39 @@
   footer svg{width:12px;height:12px;vertical-align:-2px;margin-right:4px;}
 
 
+
+  /* ---------- Supplier Bills call-to-action (glowing) ---------- */
+  .sup-cta{
+    position:relative;isolation:isolate;display:flex;align-items:center;gap:14px;width:100%;
+    margin:22px 0 0;padding:16px 18px;text-align:left;cursor:pointer;color:#1A1405;font-family:inherit;
+    background:linear-gradient(120deg,#F7DC83 0%,#E2B43A 45%,#C9971C 100%);
+    background-size:200% 100%;
+    border:1px solid rgba(255,244,200,.55);border-radius:var(--radius);
+    box-shadow:0 0 0 0 rgba(226,180,58,.55),0 10px 30px -8px rgba(226,180,58,.65);
+    animation:ctaGlow 2.6s ease-in-out infinite;
+    transition:transform .15s ease,background-position .4s ease;
+  }
+  .sup-cta::before{ /* soft halo behind the button */
+    content:"";position:absolute;inset:-6px;z-index:-1;border-radius:calc(var(--radius) + 6px);
+    background:radial-gradient(60% 120% at 50% 50%,rgba(226,180,58,.45),transparent 70%);
+    filter:blur(10px);opacity:.7;animation:ctaHalo 2.6s ease-in-out infinite;
+  }
+  .sup-cta:hover{background-position:100% 0;}
+  .sup-cta:active{transform:scale(.985);}
+  .sup-cta:focus-visible{outline:2px solid #fff;outline-offset:3px;}
+  .sup-cta-ic{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;flex-shrink:0;background:rgba(26,20,5,.14);}
+  .sup-cta-ic svg{width:21px;height:21px;}
+  .sup-cta-tx{display:flex;flex-direction:column;min-width:0;flex:1;}
+  .sup-cta-tx b{font-size:15.5px;font-weight:700;letter-spacing:-.01em;}
+  .sup-cta-tx small{font-size:12px;font-weight:500;opacity:.75;margin-top:1px;}
+  .sup-cta-ar{width:22px;height:22px;flex-shrink:0;transition:transform .2s ease;}
+  .sup-cta:hover .sup-cta-ar{transform:translateX(4px);}
+  @keyframes ctaGlow{
+    0%,100%{box-shadow:0 0 0 0 rgba(226,180,58,.5),0 10px 30px -8px rgba(226,180,58,.55);}
+    50%{box-shadow:0 0 0 9px rgba(226,180,58,0),0 14px 40px -6px rgba(251,227,142,.85);}
+  }
+  @keyframes ctaHalo{0%,100%{opacity:.45;}50%{opacity:.95;}}
+
   /* ---------- Supplier bills page ---------- */
   .sv-top{margin-bottom:2px;}
   #supplierView .sec-head{margin-top:14px;}
@@ -723,11 +756,7 @@
   </section>
 
   <!-- Finder -->
-  <div class="sec-head"><div><div class="sec-title">Quick Finder</div><div class="sec-sub">Totals by date range and supplier</div></div>
-    <button id="openSupBtn" class="btn" type="button">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg>
-      Supplier bills
-    </button></div>
+  <div class="sec-head"><div><div class="sec-title">Quick Finder</div><div class="sec-sub">Totals by date range and supplier</div></div></div>
   <section class="card finder-card" aria-label="Quick finder">
     <div class="tabs" role="tablist">
       <button class="tab" role="tab" aria-selected="true" data-mode="range" type="button">Date range</button>
@@ -761,6 +790,12 @@
       </div>
     </div>
   </section>
+
+  <button id="openSupBtn" class="sup-cta" type="button">
+    <span class="sup-cta-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg></span>
+    <span class="sup-cta-tx"><b>Supplier Bills</b><small>See every bill by supplier and period</small></span>
+    <svg class="sup-cta-ar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
+  </button>
 
   <!-- Monthly trend -->
   <div class="sec-head"><div><div class="sec-title">Monthly Trend</div><div class="sec-sub">2025 archive + 2026 monthly sheets &middot; tap a bar</div></div></div>
