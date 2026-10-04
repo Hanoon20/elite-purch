@@ -505,6 +505,12 @@
 
 
 
+
+  /* ---------- Top 5 period filter ---------- */
+  #topSuppliersPanel .top-custom{margin-top:14px;}
+  .top-summary{display:flex;flex-wrap:wrap;justify-content:space-between;gap:2px 12px;margin:14px 0 4px;padding-top:14px;border-top:1px solid var(--border);font-size:12px;color:var(--muted);}
+  .top-summary b{color:var(--text);font-weight:600;}
+
   /* ---------- Supplier Bills call-to-action (glowing) ---------- */
   .sup-cta{
     position:relative;isolation:isolate;display:flex;align-items:center;gap:14px;width:100%;
@@ -812,7 +818,22 @@
   </section>
 
   <div class="sec-head"><div><div class="sec-title">Top 5 Suppliers</div><div class="sec-sub">By total purchase value</div></div></div>
-  <section class="card" id="topSuppliersPanel" aria-label="Top suppliers"><div class="empty">Loading&hellip;</div></section>
+  <section class="card" id="topSuppliersPanel" aria-label="Top suppliers">
+    <div class="chips" id="topChips">
+      <button class="chip active" type="button" data-p="all">All time</button>
+      <button class="chip" type="button" data-p="thisMonth">This month</button>
+      <button class="chip" type="button" data-p="lastMonth">Last month</button>
+      <button class="chip" type="button" data-p="last3">Last 3 months</button>
+      <button class="chip" type="button" data-p="last30">Last 30 days</button>
+      <button class="chip" type="button" data-p="custom">Custom</button>
+    </div>
+    <div class="two-col top-custom" id="topCustom" hidden>
+      <div class="field"><label class="field-label" for="topFrom">From</label><input type="date" id="topFrom"></div>
+      <div class="field"><label class="field-label" for="topTo">To</label><input type="date" id="topTo"></div>
+    </div>
+    <div class="top-summary" id="topSummary"></div>
+    <div id="topList"><div class="empty">Loading&hellip;</div></div>
+  </section>
 </main>
 
 <main id="supplierView" hidden>
