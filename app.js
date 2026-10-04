@@ -381,7 +381,7 @@ function render(){
   $("k-lastbills").textContent = fmtInt(lastN);
 
   renderChart(now);
-  renderTopSuppliers(bySup, total);
+  renderTopSuppliers();
   renderSupplierOptions(bySup);
   updateFinder();
 }
@@ -418,18 +418,73 @@ function selectBar(k){
   showDetail(k);
 }
 
-function renderTopSuppliers(bySup, total){
+let topPeriod = "all";
+
+// Returns {from, to, label} in local-midnight ms, or {msg} when custom dates are incomplete
+function topRange(){
+  const now = new Date(), y = now.getFullYear(), m = now.getMonth(), d = now.getDate();
+  const ms = (yy, mm, dd) => new Date(yy, mm, dd).getTime();
+  const SM = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const mon = t => { const x = new Date(t); return `${SM[x.getMonth()]} ${x.getFullYear()}`; };
+  const day = t => { const x = new Date(t); return `${String(x.getDate()).padStart(2,"0")} ${SM[x.getMonth()]} ${x.getFullYear()}`; };
+  switch(topPeriod){
+    case "thisMonth": { const f = ms(y, m, 1);     return { from: f, to: ms(y, m + 1, 0), label: mon(f) }; }
+    case "lastMonth": { const f = ms(y, m - 1, 1); return { from: f, to: ms(y, m, 0),     label: mon(f) }; }
+    case "last3":     { const f = ms(y, m - 2, 1); return { from: f, to: ms(y, m + 1, 0), label: `${mon(f)} – ${mon(ms(y, m, 1))}` }; }
+    case "last30":    { const f = ms(y, m, d - 29), t = ms(y, m, d); return { from: f, to: t, label: `${day(f)} – ${day(t)}` }; }
+    case "custom": {
+      const f = parseLocalMs($("topFrom").value), t = parseLocalMs($("topTo").value);
+      if(f === null || t === null) return { msg: "Pick both From and To dates." };
+      if(f > t) return { msg: "⚠️ From date is after To date." };
+      return { from: f, to: t, label: `${day(f)} – ${day(t)}` };
+    }
+    default: return { from: -Infinity, to: Infinity, label: "All time" };
+  }
+}
+
+function renderTopSuppliers(){
+  const list = $("topList"), summary = $("topSummary");
+  const r = topRange();
+  if(r.msg){ summary.innerHTML = ""; list.innerHTML = `<div class="empty">${esc(r.msg)}</div>`; return; }
+
+  // aggregate in one pass; undated bills only count in All time
+  const bySup = new Map();
+  let total = 0, n = 0;
+  for(const b of BILLS){
+    if(topPeriod !== "all" && (b.t === null || b.t < r.from || b.t > r.to)) continue;
+    bySup.set(b.s, (bySup.get(b.s) || 0) + b.a);
+    total += b.a; n++;
+  }
+  summary.innerHTML = `<span>${esc(r.label)}</span><span><b class="num">${fmtMoney(total)}</b> · ${fmtInt(n)} bill${n === 1 ? "" : "s"}</span>`;
+
   const top = [...bySup.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5);
   const max = top.length ? top[0][1] : 1;
-  $("topSuppliersPanel").innerHTML = top.length ? top.map(([name, amt], i) => `
+  list.innerHTML = top.length ? top.map(([name, amt], i) => `
     <div class="supplier-row">
       <div class="rank">${i + 1}</div>
       <div class="supplier-name" title="${esc(name)}">${esc(name)}</div>
       <div class="supplier-amt num">${fmtMoney(amt)}</div>
       <div class="share-track"><div class="share-bar" style="width:${(amt / max * 100).toFixed(1)}%"></div></div>
       <div class="share-pct num">${total ? (amt / total * 100).toFixed(1) : "0.0"}%</div>
-    </div>`).join("") : `<div class="empty">No data yet</div>`;
+    </div>`).join("") : `<div class="empty">${BILLS.length ? "No bills in this period" : "No data yet"}</div>`;
 }
+
+$("topChips").addEventListener("click", e => {
+  const c = e.target.closest(".chip"); if(!c) return;
+  topPeriod = c.dataset.p;
+  document.querySelectorAll("#topChips .chip").forEach(x => x.classList.toggle("active", x === c));
+  $("topCustom").hidden = topPeriod !== "custom";
+  if(topPeriod === "custom" && !$("topFrom").value){
+    const n = new Date();
+    $("topFrom").value = toLocalISODate(new Date(n.getFullYear(), n.getMonth(), 1));
+    $("topTo").value = toLocalISODate(n);
+  }
+  renderTopSuppliers();
+});
+["topFrom", "topTo"].forEach(id => {
+  $(id).addEventListener("change", renderTopSuppliers);
+  $(id).addEventListener("click", e => { try{ e.currentTarget.showPicker(); }catch(err){} });
+});
 
 // ---------------------------------------------------------------------------
 // Searchable supplier picker (shared by the finder and the Add Bill form)
