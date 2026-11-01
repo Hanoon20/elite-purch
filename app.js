@@ -1344,6 +1344,27 @@ if("serviceWorker" in navigator && (location.protocol === "https:" || location.h
 }
 
 // ---------------------------------------------------------------------------
+// Light / dark theme (initial theme is applied by theme.js before first paint)
+// ---------------------------------------------------------------------------
+const THEME_KEY = "ledger_theme";
+const themeNow = () => document.documentElement.getAttribute("data-theme") === "light" ? "light" : "dark";
+function applyTheme(t, save){
+  document.documentElement.setAttribute("data-theme", t);
+  if(save){ try{ localStorage.setItem(THEME_KEY, t); }catch(e){} }
+  const label = t === "light" ? "Switch to dark mode" : "Switch to light mode";
+  document.querySelectorAll(".theme-btn").forEach(b => { b.setAttribute("aria-label", label); b.title = label; });
+}
+document.querySelectorAll(".theme-btn").forEach(b => b.addEventListener("click", () => applyTheme(themeNow() === "light" ? "dark" : "light", true)));
+applyTheme(themeNow(), false);
+// Until a choice is saved, follow the device setting live
+try{
+  matchMedia("(prefers-color-scheme: light)").addEventListener("change", e => {
+    let saved = null; try{ saved = localStorage.getItem(THEME_KEY); }catch(err){}
+    if(saved !== "light" && saved !== "dark") applyTheme(e.matches ? "light" : "dark", false);
+  });
+}catch(e){}
+
+// ---------------------------------------------------------------------------
 // Boot
 // ---------------------------------------------------------------------------
 applyPreset("thisMonth");
