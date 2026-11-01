@@ -791,6 +791,10 @@
   :root[data-theme="light"] #googleSignInBtn{border:1px solid var(--border-strong);box-shadow:0 8px 20px -10px rgba(50,40,10,.35);}
   :root[data-theme="light"] #googleSignInBtn:hover{box-shadow:0 10px 24px -10px rgba(50,40,10,.45);}
   :root[data-theme="light"] .bar{background:linear-gradient(180deg,#A3ACA8,#7D8783);opacity:.6;}
+  :root[data-theme="light"] .bar-col.sel .bar{
+    background:linear-gradient(180deg,#F6D46E,#C9971C);opacity:1;
+    box-shadow:0 0 18px -3px rgba(201,151,28,.75);
+  }
   :root[data-theme="light"] .combo-opt mark{background:rgba(226,180,58,.4);}
 
 </style>
@@ -906,6 +910,38 @@
     </div>
   </section>
 
+  <!-- Monthly trend -->
+  <div class="sec-head"><div><div class="sec-title">Monthly Trend</div><div class="sec-sub">2025 archive + 2026 monthly sheets &middot; tap a bar</div></div></div>
+  <section class="card" aria-label="Monthly trend">
+    <div class="chart-detail">
+      <div><div class="chart-detail-name" id="detailName">&mdash;</div><div class="chart-detail-val num" id="detailVal">&mdash;</div></div>
+      <div class="chart-detail-sub" id="detailSub"></div>
+    </div>
+    <div class="chart-wrap">
+      <div class="chart" id="chart" role="list"></div>
+      <div class="tooltip" id="tooltip"></div>
+    </div>
+    <div class="chart-labels" id="chartLabels" aria-hidden="true"></div>
+  </section>
+
+  <div class="sec-head"><div><div class="sec-title">Top 5 Suppliers</div><div class="sec-sub">By total purchase value</div></div></div>
+  <section class="card" id="topSuppliersPanel" aria-label="Top suppliers">
+    <div class="chips" id="topChips">
+      <button class="chip active" type="button" data-p="all">All time</button>
+      <button class="chip" type="button" data-p="thisMonth">This month</button>
+      <button class="chip" type="button" data-p="lastMonth">Last month</button>
+      <button class="chip" type="button" data-p="last3">Last 3 months</button>
+      <button class="chip" type="button" data-p="last30">Last 30 days</button>
+      <button class="chip" type="button" data-p="custom">Custom</button>
+    </div>
+    <div class="two-col top-custom" id="topCustom" hidden>
+      <div class="field"><label class="field-label" for="topFrom">From</label><input type="date" id="topFrom"></div>
+      <div class="field"><label class="field-label" for="topTo">To</label><input type="date" id="topTo"></div>
+    </div>
+    <div class="top-summary" id="topSummary"></div>
+    <div id="topList"><div class="empty">Loading&hellip;</div></div>
+  </section>
+
   <!-- Finder -->
   <div class="sec-head"><div><div class="sec-title">Quick Finder</div><div class="sec-sub">Totals by date range and supplier</div></div></div>
   <section class="card finder-card" aria-label="Quick finder">
@@ -953,38 +989,6 @@
     <span class="sup-cta-tx"><b>Sheets &amp; Bills</b><small>Browse every bill, sheet by sheet</small></span>
     <svg class="sup-cta-ar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
   </button>
-
-  <!-- Monthly trend -->
-  <div class="sec-head"><div><div class="sec-title">Monthly Trend</div><div class="sec-sub">2025 archive + 2026 monthly sheets &middot; tap a bar</div></div></div>
-  <section class="card" aria-label="Monthly trend">
-    <div class="chart-detail">
-      <div><div class="chart-detail-name" id="detailName">&mdash;</div><div class="chart-detail-val num" id="detailVal">&mdash;</div></div>
-      <div class="chart-detail-sub" id="detailSub"></div>
-    </div>
-    <div class="chart-wrap">
-      <div class="chart" id="chart" role="list"></div>
-      <div class="tooltip" id="tooltip"></div>
-    </div>
-    <div class="chart-labels" id="chartLabels" aria-hidden="true"></div>
-  </section>
-
-  <div class="sec-head"><div><div class="sec-title">Top 5 Suppliers</div><div class="sec-sub">By total purchase value</div></div></div>
-  <section class="card" id="topSuppliersPanel" aria-label="Top suppliers">
-    <div class="chips" id="topChips">
-      <button class="chip active" type="button" data-p="all">All time</button>
-      <button class="chip" type="button" data-p="thisMonth">This month</button>
-      <button class="chip" type="button" data-p="lastMonth">Last month</button>
-      <button class="chip" type="button" data-p="last3">Last 3 months</button>
-      <button class="chip" type="button" data-p="last30">Last 30 days</button>
-      <button class="chip" type="button" data-p="custom">Custom</button>
-    </div>
-    <div class="two-col top-custom" id="topCustom" hidden>
-      <div class="field"><label class="field-label" for="topFrom">From</label><input type="date" id="topFrom"></div>
-      <div class="field"><label class="field-label" for="topTo">To</label><input type="date" id="topTo"></div>
-    </div>
-    <div class="top-summary" id="topSummary"></div>
-    <div id="topList"><div class="empty">Loading&hellip;</div></div>
-  </section>
 </main>
 
 <main id="sheetsView" hidden>
