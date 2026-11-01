@@ -506,6 +506,69 @@
 
 
 
+
+  /* ---------- Secondary dashboard button (Sheets & Bills) ---------- */
+  .sup-cta.alt{
+    margin-top:14px;color:var(--text);
+    background:linear-gradient(120deg,rgba(226,180,58,.16),rgba(174,182,178,.10));background-size:100% 100%;
+    border:1px solid rgba(226,180,58,.45);box-shadow:none;animation:none;
+  }
+  .sup-cta.alt::before{display:none;}
+  .sup-cta.alt:hover{border-color:var(--brand);background-position:0 0;}
+  .sup-cta.alt .sup-cta-ic{background:rgba(226,180,58,.18);color:var(--brand);}
+  .sup-cta.alt .sup-cta-ar{color:var(--brand);}
+
+  /* ---------- Sheets & Bills page ---------- */
+  #sheetsView .sec-head{margin-top:14px;}
+  .sb-tabs-wrap{
+    position:sticky;top:var(--hdr,64px);z-index:20;margin:0 -16px;padding:10px 16px;
+    background:rgba(13,18,17,.86);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+    border-bottom:1px solid var(--border);
+  }
+  .sb-tabs{position:relative;display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;}
+  .sb-tabs::-webkit-scrollbar{display:none;}
+  .sb-tab{
+    flex:0 0 auto;min-width:60px;padding:8px 14px 7px;border-radius:12px;cursor:pointer;
+    background:transparent;border:1px solid var(--border-strong);color:var(--text-2);
+    font-family:inherit;font-size:13px;font-weight:600;line-height:1.2;text-align:center;
+    display:flex;flex-direction:column;align-items:center;gap:2px;transition:all .15s ease;
+  }
+  .sb-tab small{font-size:10.5px;font-weight:500;color:var(--muted);}
+  .sb-tab:hover{border-color:var(--brand);color:var(--text);}
+  .sb-tab[aria-selected="true"]{background:rgba(226,180,58,.18);border-color:var(--brand);color:#fff;}
+  .sb-tab[aria-selected="true"] small{color:var(--brand);}
+  .sb-tab.empty{opacity:.5;}
+  .sb-tab:focus-visible,.sb-search:focus-visible{outline:2px solid var(--brand);outline-offset:2px;}
+  #sbStats .sv-stats{margin-top:18px;}
+  .sb-controls{margin-bottom:16px;}
+  .sb-ctl-grid{display:grid;gap:12px;}
+  .sb-search{
+    background:var(--panel-alt);border:1px solid var(--border-strong);color:var(--text);
+    border-radius:11px;padding:11px 12px;font-size:14px;width:100%;font-family:inherit;min-height:44px;
+    -webkit-appearance:none;appearance:none;transition:border-color .15s ease;
+  }
+  .sb-search:hover{border-color:rgba(200,190,158,.4);}
+  .sb-search::placeholder{color:var(--muted);}
+  .sb-hint{font-size:12px;color:var(--muted);margin-top:12px;}
+  .sb-hint:empty{display:none;}
+  .sb-count{font-size:12px;color:var(--muted);}
+  .sb-colhead{display:none;}
+  .sb-row{display:grid;grid-template-columns:1fr auto;gap:3px 12px;align-items:center;padding:12px 0;border-top:1px solid var(--border);}
+  .sb-sup{grid-column:1;font-size:13.5px;font-weight:600;overflow-wrap:anywhere;min-width:0;}
+  .sb-amt{grid-column:2;grid-row:1 / span 2;text-align:right;font-size:13.5px;white-space:nowrap;}
+  .sb-meta{grid-column:1;display:flex;flex-wrap:wrap;gap:2px 12px;font-size:12px;color:var(--muted);}
+  .sb-inv.none{opacity:.7;}
+  @media(min-width:680px){
+    .sb-ctl-grid{grid-template-columns:1.4fr 1fr;}
+    .sb-colhead,.sb-row{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1.2fr) 120px 80px 150px;gap:12px;align-items:center;}
+    .sb-colhead{font-size:11.5px;font-weight:600;color:var(--muted);padding:2px 0 10px;}
+    .sb-colhead .r{text-align:right;}
+    .sb-meta{display:contents;}
+    .sb-sup,.sb-amt{grid-column:auto;grid-row:auto;}
+    .sb-inv,.sb-date,.sb-rown{font-size:13px;color:var(--text-2);}
+    .sb-rown{color:var(--muted);}
+  }
+
   /* ---------- Top 5 period filter ---------- */
   #topSuppliersPanel .top-custom{margin-top:14px;}
   .top-summary{display:flex;flex-wrap:wrap;justify-content:space-between;gap:2px 12px;margin:14px 0 4px;padding-top:14px;border-top:1px solid var(--border);font-size:12px;color:var(--muted);}
@@ -803,6 +866,12 @@
     <svg class="sup-cta-ar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
   </button>
 
+  <button id="openSheetsBtn" class="sup-cta alt" type="button">
+    <span class="sup-cta-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M3 10h18M9 10v10"/></svg></span>
+    <span class="sup-cta-tx"><b>Sheets &amp; Bills</b><small>Browse every bill, sheet by sheet</small></span>
+    <svg class="sup-cta-ar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
+  </button>
+
   <!-- Monthly trend -->
   <div class="sec-head"><div><div class="sec-title">Monthly Trend</div><div class="sec-sub">2025 archive + 2026 monthly sheets &middot; tap a bar</div></div></div>
   <section class="card" aria-label="Monthly trend">
@@ -834,6 +903,36 @@
     <div class="top-summary" id="topSummary"></div>
     <div id="topList"><div class="empty">Loading&hellip;</div></div>
   </section>
+</main>
+
+<main id="sheetsView" hidden>
+  <div class="sv-top">
+    <button id="sbBack" class="btn" type="button">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>
+      Dashboard
+    </button>
+  </div>
+  <div class="sec-head"><div><div class="sec-title">Sheets &amp; Bills</div><div class="sec-sub">Pick a sheet to see every bill in it</div></div></div>
+  <div class="sb-tabs-wrap"><div class="sb-tabs" id="sbTabs" role="tablist" aria-label="Sheets"></div></div>
+  <div id="sbStats"></div>
+  <section class="card sb-controls" aria-label="Sort and search">
+    <div class="sb-ctl-grid">
+      <div class="field"><label class="field-label" for="sbSearch">Search</label><input type="search" id="sbSearch" class="sb-search" placeholder="Supplier or invoice no." autocomplete="off" spellcheck="false" enterkeyhint="search"></div>
+      <div class="field"><label class="field-label" for="sbSort">Sort by</label>
+        <select id="sbSort">
+          <option value="recent">Recently added</option>
+          <option value="oldest">Oldest added</option>
+          <option value="amtHigh">Amount: high to low</option>
+          <option value="amtLow">Amount: low to high</option>
+          <option value="dateNew">Bill date: newest</option>
+          <option value="dateOld">Bill date: oldest</option>
+          <option value="supplier">Supplier A–Z</option>
+        </select>
+      </div>
+    </div>
+    <div class="sb-hint" id="sbHint"></div>
+  </section>
+  <div id="sbList" aria-live="polite"></div>
 </main>
 
 <main id="supplierView" hidden>
