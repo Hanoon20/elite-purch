@@ -33,7 +33,7 @@ const SCOPES = "https://www.googleapis.com/auth/spreadsheets.readonly https://ww
 const WRITE_SCOPE = "https://www.googleapis.com/auth/spreadsheets"; // asked for only when adding a bill
 const TOKEN_KEY = "ledger_token_v3";     // {token, exp, scope}
 const EMAIL_KEY = "ledger_user_email";
-const CACHE_KEY = "ledger_cache_v5";     // last loaded data, for instant paint
+const CACHE_KEY = "ledger_cache_v6";     // last loaded data, for instant paint
 const LOCK_MSG_KEY = "ledger_lock_msg";  // reason shown on the sign-in screen after an auto-lock
 const IDLE_LOCK_MINUTES = 30;            // lock and wipe the data after this long without activity
 
@@ -219,9 +219,10 @@ function enterDashboard(){
 // ---------------------------------------------------------------------------
 // Data
 // ---------------------------------------------------------------------------
-// Bill shape (compact for speed + cache size): {s: supplier, i: invoice, a: amount, t: local-midnight ms | null, k: sheet index}
+// Bill shape (compact for speed + cache size): {s: supplier, i: invoice, a: amount, t: local-midnight ms | null, k: sheet index, r: row index in the sheet (0-based)}
 let BILLS = [];
 let BY_SUPPLIER = new Map();   // supplier -> bills[]
+let BY_SHEET = SHEETS.map(() => []);   // sheet index -> bills[] in sheet row order
 
 const clean = v => (v === null || v === undefined) ? "" : String(v).replace(/[​-‍﻿]/g,"").trim();
 const esc = s => s.replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -250,7 +251,7 @@ function parseRows(rows, k, out){
     const s = clean(r[0]);
     const a = typeof r[2] === "number" && isFinite(r[2]) ? r[2] : 0;
     if(!s && !a) continue; // blank filler rows
-    out.push({ s: s || "(Unnamed)", i: clean(r[1]), a, t: serialToMs(r[3]), k });
+    out.push({ s: s || "(Unnamed)", i: clean(r[1]), a, t: serialToMs(r[3]), k, r: i });
   }
 }
 
@@ -342,13 +343,15 @@ function setUpdated(when, stale){
 function setData(bills){
   BILLS = bills;
   BY_SUPPLIER = new Map();
+  BY_SHEET = SHEETS.map(() => []);
   for(const b of bills){
+    if(BY_SHEET[b.k]) BY_SHEET[b.k].push(b);
     let arr = BY_SUPPLIER.get(b.s);
     if(!arr) BY_SUPPLIER.set(b.s, arr = []);
     arr.push(b);
   }
   // Paint on the next frame so input stays responsive
-  requestAnimationFrame(() => { render(); if(!svView.hidden) renderSupplierView(); });
+  requestAnimationFrame(() => { render(); if(!svView.hidden) renderSupplierView(); if(!sbView.hidden) renderSheetsView(); });
 }
 
 // ---------------------------------------------------------------------------
@@ -801,11 +804,114 @@ function renderSupplierView(){
   out.innerHTML = html;
 }
 
+// ---------------------------------------------------------------------------
+// Sheets & Bills page: pick a sheet (2025, Jan … Dec), see all its bills, sort / search them
+// ---------------------------------------------------------------------------
+const sbView = $("sheetsView");
+let sbSheet = -1, sbSort = "recent", sbQuery = "";
+const SB_LABEL = k => k === 0 ? "2025" : MONTH_SHEETS[k - 1];
+const SB_TITLE = k => k === 0 ? "2025 archive" : `${MONTH_LONG[k - 1]} 2026`;
+const SB_HINTS = {
+  recent: "Newest entries first, based on the order bills were added in the sheet (last row = latest).",
+  oldest: "Oldest entries first (top rows of the sheet)."
+};
+
+function sbDefaultSheet(){
+  const now = new Date();
+  let k = now.getFullYear() === 2025 ? 0 : 1 + now.getMonth();
+  if(!(BY_SHEET[k] && BY_SHEET[k].length)){
+    for(let j = SHEETS.length - 1; j >= 0; j--) if(BY_SHEET[j].length){ k = j; break; }
+  }
+  return k;
+}
+
+function sbRenderTabs(){
+  const box = $("sbTabs");
+  box.innerHTML = SHEETS.map((s, k) => {
+    const n = BY_SHEET[k].length;
+    return `<button class="sb-tab${n ? "" : " empty"}" type="button" role="tab" data-k="${k}" aria-selected="${k === sbSheet}">` +
+           `<span>${esc(SB_LABEL(k))}</span><small>${fmtInt(n)}</small></button>`;
+  }).join("");
+  const sel = box.querySelector('[aria-selected="true"]');
+  if(sel) box.scrollLeft = sel.offsetLeft - (box.clientWidth - sel.offsetWidth) / 2;
+}
+
+function sbSorted(rows){
+  const nullLast = (a, b) => (a.t === null) - (b.t === null);
+  switch(sbSort){
+    case "recent":   return rows.reverse();                                   // file order is oldest -> newest
+    case "oldest":   return rows;
+    case "amtHigh":  return rows.sort((a, b) => b.a - a.a);
+    case "amtLow":   return rows.sort((a, b) => a.a - b.a);
+    case "dateNew":  return rows.sort((a, b) => nullLast(a, b) || b.t - a.t);
+    case "dateOld":  return rows.sort((a, b) => nullLast(a, b) || a.t - b.t);
+    case "supplier": return rows.sort((a, b) => a.s.localeCompare(b.s));
+    default:         return rows;
+  }
+}
+
+function renderSheetsView(){
+  const stats = $("sbStats"), list = $("sbList");
+  const msg = t => `<div class="card"><div class="empty">${t}</div></div>`;
+  if(!BILLS.length){ $("sbTabs").innerHTML = ""; stats.innerHTML = ""; list.innerHTML = msg("Loading bills…"); return; }
+  if(sbSheet < 0) sbSheet = sbDefaultSheet();
+  sbRenderTabs();
+  $("sbHint").textContent = SB_HINTS[sbSort] || "";
+
+  const all = BY_SHEET[sbSheet];
+  const q = sbQuery.trim().toLowerCase();
+  let rows = q ? all.filter(b => b.s.toLowerCase().includes(q) || b.i.toLowerCase().includes(q)) : all.slice();
+  rows = sbSorted(rows);
+
+  let total = 0, biggest = 0;
+  const sups = new Set();
+  for(const b of rows){ total += b.a; if(b.a > biggest) biggest = b.a; sups.add(b.s); }
+  const stat = (cls, label, text, sub, title) =>
+    `<div class="sv-stat ${cls}"><div class="k">${label}</div><div class="v num" title="${esc(title || "")}">${esc(text)}</div>${sub ? `<div class="s">${esc(sub)}</div>` : ""}</div>`;
+  stats.innerHTML = `<div class="sv-stats">` +
+    stat("main", q ? "Total (filtered)" : "Total", fmtCompact(total), `${SB_TITLE(sbSheet)} · ${fmtMoney(total)}`, fmtMoney(total)) +
+    stat("", "Bills", fmtInt(rows.length)) +
+    stat("", "Suppliers", fmtInt(sups.size)) +
+    stat("", "Largest", fmtCompact(biggest), "", fmtMoney(biggest)) +
+    `</div>`;
+
+  if(!all.length){ list.innerHTML = msg(`No bills in ${esc(SB_TITLE(sbSheet))} yet.`); return; }
+  if(!rows.length){ list.innerHTML = msg(`No bills match “${esc(sbQuery.trim())}” in ${esc(SB_TITLE(sbSheet))}.`); return; }
+
+  const row = b => `<div class="sb-row"><div class="sb-sup">${esc(b.s)}</div>` +
+    `<div class="sb-meta"><span class="sb-inv${b.i ? "" : " none"}">${b.i ? esc(b.i) : "No invoice no."}</span>` +
+    `<span class="sb-date">${b.t === null ? "No date" : fmtDay(b.t)}</span>` +
+    `<span class="sb-rown">${typeof b.r === "number" ? "Row " + (b.r + 1) : ""}</span></div>` +
+    `<div class="sb-amt num">${fmtMoney(b.a)}</div></div>`;
+
+  list.innerHTML = `<section class="card" aria-label="Bills in ${esc(SB_TITLE(sbSheet))}">` +
+    `<div class="sv-head"><div class="sv-name">${esc(SB_TITLE(sbSheet))}</div>` +
+    `<div class="sb-count">${q ? `Showing ${fmtInt(rows.length)} of ${fmtInt(all.length)} bills` : `${fmtInt(rows.length)} bill${rows.length === 1 ? "" : "s"}`}</div></div>` +
+    `<div class="sb-colhead" aria-hidden="true"><span>Supplier</span><span>Invoice</span><span>Date</span><span>Row</span><span class="r">Amount</span></div>` +
+    rows.map(row).join("") + `</section>`;
+}
+
+$("sbTabs").addEventListener("click", e => {
+  const t = e.target.closest(".sb-tab"); if(!t) return;
+  sbSheet = +t.dataset.k;
+  renderSheetsView();
+  window.scrollTo(0, 0);
+});
+$("sbSort").addEventListener("change", e => { sbSort = e.target.value; renderSheetsView(); });
+$("sbSearch").addEventListener("input", e => { sbQuery = e.target.value; renderSheetsView(); });
+$("openSheetsBtn").addEventListener("click", () => { location.hash = "sheets"; });
+$("sbBack").addEventListener("click", () => { location.hash = "dashboard"; });
+
 function route(){
-  const onSupplier = location.hash === "#suppliers";
-  dashView.hidden = onSupplier;
-  svView.hidden = !onSupplier;
-  if(onSupplier) renderSupplierView();
+  const hash = location.hash;
+  dashView.hidden = hash === "#suppliers" || hash === "#sheets";
+  svView.hidden = hash !== "#suppliers";
+  sbView.hidden = hash !== "#sheets";
+  // the sticky sheet tabs sit right under the header, whatever its height
+  const hd = document.querySelector("header");
+  if(hd) document.documentElement.style.setProperty("--hdr", hd.offsetHeight + "px");
+  if(hash === "#suppliers") renderSupplierView();
+  if(hash === "#sheets") renderSheetsView();
   window.scrollTo(0, 0);
 }
 
