@@ -37,7 +37,7 @@ const EMAIL_KEY = "ledger_user_email";
 const CACHE_KEY = "ledger_cache_v6";     // last loaded data, for instant paint
 const LOCK_MSG_KEY = "ledger_lock_msg";  // reason shown on the sign-in screen after an auto-lock
 const IDLE_LOCK_MINUTES = 30;            // lock and wipe the data after this long without activity
-const LOG_URL = "";                      // System Log: paste the Apps Script web app URL here (see system-log/SETUP.md). Empty = System Log is off.
+const LOG_URL = "https://script.google.com/macros/s/AKfycbwqHdtKQqE65nZ_EL5j_2MbUrbxWWIc43D_XNr6TeHrrZnNJeSn07SLVWsUXv59NIptVA/exec";                      // System Log: paste the Apps Script web app URL here (see system-log/SETUP.md). Empty = System Log is off.
 const LOG_FLAG_KEY = "ledger_log_editor"; // sessionStorage: "1" if this person has Add bill (Editor) access
 
 const $ = id => document.getElementById(id);
