@@ -205,6 +205,7 @@ function showAccount(){
   const email = currentUserEmail || "";
   $("accountEmail").textContent = email || "Google account";
   $("avatarLetter").textContent = (email[0] || "?").toUpperCase();
+  $("menuAvatarLetter").textContent = (email[0] || "?").toUpperCase();
   $("avatar").classList.add("show");
   document.body.classList.add("authed");
 }
@@ -1368,9 +1369,9 @@ function applyTheme(t, save){
   if(save){ try{ localStorage.setItem(THEME_KEY, t); }catch(e){} }
   const label = t === "light" ? "Switch to dark mode" : "Switch to light mode";
   document.querySelectorAll(".theme-btn").forEach(b => { b.setAttribute("aria-label", label); b.title = label; });
-  document.querySelectorAll(".theme-label").forEach(s => { s.textContent = label; });
+  document.querySelectorAll(".menu-theme").forEach(b => b.setAttribute("aria-checked", String(t === "dark")));
 }
-document.querySelectorAll(".theme-btn").forEach(b => b.addEventListener("click", () => applyTheme(themeNow() === "light" ? "dark" : "light", true)));
+document.querySelectorAll(".theme-btn, .menu-theme").forEach(b => b.addEventListener("click", () => applyTheme(themeNow() === "light" ? "dark" : "light", true)));
 applyTheme(themeNow(), false);
 // Until a choice is saved, follow the device setting live
 try{
