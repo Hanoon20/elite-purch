@@ -37,6 +37,8 @@ const EMAIL_KEY = "ledger_user_email";
 const CACHE_KEY = "ledger_cache_v6";     // last loaded data, for instant paint
 const LOCK_MSG_KEY = "ledger_lock_msg";  // reason shown on the sign-in screen after an auto-lock
 const IDLE_LOCK_MINUTES = 30;            // lock and wipe the data after this long without activity
+const LOG_URL = "";                      // System Log: paste the Apps Script web app URL here (see system-log/SETUP.md). Empty = System Log is off.
+const LOG_FLAG_KEY = "ledger_log_editor"; // sessionStorage: "1" if this person has Add bill (Editor) access
 
 const $ = id => document.getElementById(id);
 
@@ -152,7 +154,7 @@ function signOut(){
   if(accessToken && window.google && google.accounts && google.accounts.oauth2){
     try{ google.accounts.oauth2.revoke(accessToken, () => {}); }catch(e){}
   }
-  [TOKEN_KEY, EMAIL_KEY, CACHE_KEY].forEach(store.del);
+  [TOKEN_KEY, EMAIL_KEY, CACHE_KEY, LOG_FLAG_KEY].forEach(store.del);
   accessToken = null;
   location.reload();
 }
@@ -160,7 +162,7 @@ function signOut(){
 // Drops the session and every copy of the ledger data (memory, page, storage),
 // then reloads to a clean sign-in screen that explains why.
 function secureLock(message){
-  [TOKEN_KEY, CACHE_KEY].forEach(store.del);
+  [TOKEN_KEY, CACHE_KEY, LOG_FLAG_KEY].forEach(store.del);
   accessToken = null;
   store.set(LOCK_MSG_KEY, message);
   location.reload();
@@ -216,6 +218,7 @@ function enterDashboard(){
   // Data and email lookups run in parallel — nothing waits on the other
   if(!currentUserEmail) fetchUserEmail();
   loadAll(false);
+  logSignIn();
 }
 
 // ---------------------------------------------------------------------------
@@ -918,16 +921,197 @@ $("kpiMonth").addEventListener("keydown", e => {
 });
 $("sbBack").addEventListener("click", () => { location.hash = "dashboard"; });
 
+// ---------------------------------------------------------------------------
+// System Log: every Google sign-in is recorded by the Apps Script web app (system-log/Code.gs).
+// The server decides who may see it: only the Sheet owner / Editors (the people who can use Add bill).
+// Nothing is logged or shown while LOG_URL is empty.
+// ---------------------------------------------------------------------------
+const lgView = $("logView");
+let logEditor = store.get(LOG_FLAG_KEY) === "1" ? true : store.get(LOG_FLAG_KEY) === "0" ? false : null;   // null = not known yet
+let LOG_ROWS = null, lgLoading = false, lgError = "", lgTab = "recent", lgQuery = "";
+const LK_TZ = "Asia/Colombo";
+
+async function logCall(payload){
+  if(!LOG_URL || !accessToken) return null;
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), 20000);
+  try{
+    // text/plain keeps this a "simple" request (Apps Script web apps do not answer CORS preflights)
+    const res = await fetch(LOG_URL, {
+      method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify(Object.assign({ token: accessToken }, payload)),
+      redirect: "follow", credentials: "omit", referrerPolicy: "no-referrer", cache: "no-store", signal: ctl.signal
+    });
+    return await res.json();
+  }catch(e){ return null; }
+  finally{ clearTimeout(timer); }
+}
+
+// What we record about the device: type, model (when the browser shares it), OS, browser, screen. No IP, no location.
+async function deviceInfo(){
+  const ua = navigator.userAgent || "", uad = navigator.userAgentData;
+  let os = "Unknown", osVer = "", model = "", type = "Desktop", m;
+  if(/iPhone/.test(ua)){ os = "iOS"; type = "Mobile"; model = "iPhone"; }
+  else if(/iPad/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)){ os = "iPadOS"; type = "Tablet"; model = "iPad"; }
+  else if(/Android/.test(ua)){ os = "Android"; type = /Mobile/.test(ua) ? "Mobile" : "Tablet";
+    if((m = ua.match(/Android ([\d.]+)/))) osVer = m[1];
+    if((m = ua.match(/Android [\d.]+; ([^;)]+)/)) && m[1].trim() !== "K") model = m[1].trim(); }
+  else if(/Windows/.test(ua)) os = "Windows";
+  else if(/CrOS/.test(ua)) os = "ChromeOS";
+  else if(/Mac OS X/.test(ua)) os = "macOS";
+  else if(/Linux/.test(ua)) os = "Linux";
+  if((os === "iOS" || os === "iPadOS") && (m = ua.match(/OS (\d+)[_\d]*/))) osVer = m[1];
+
+  let browser = "Unknown";
+  const pick = (re, name) => { const x = ua.match(re); return x ? `${name} ${x[1]}` : name; };
+  if(/Edg\//.test(ua)) browser = pick(/Edg\/(\d+)/, "Edge");
+  else if(/OPR\//.test(ua)) browser = pick(/OPR\/(\d+)/, "Opera");
+  else if(/SamsungBrowser/.test(ua)) browser = pick(/SamsungBrowser\/(\d+)/, "Samsung Internet");
+  else if(/CriOS/.test(ua)) browser = pick(/CriOS\/(\d+)/, "Chrome");
+  else if(/FxiOS|Firefox/.test(ua)) browser = pick(/(?:FxiOS|Firefox)\/(\d+)/, "Firefox");
+  else if(/Chrome\//.test(ua)) browser = pick(/Chrome\/(\d+)/, "Chrome");
+  else if(/Safari\//.test(ua)) browser = pick(/Version\/(\d+)/, "Safari");
+
+  try{   // Chrome on Android shares the real model name on request
+    if(uad && uad.getHighEntropyValues){
+      const v = await uad.getHighEntropyValues(["model", "platformVersion"]);
+      if(v.model) model = v.model;
+      if(os === "Android" && v.platformVersion) osVer = String(v.platformVersion).split(".")[0];
+    }
+  }catch(e){}
+
+  const standalone = matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+  const osText = osVer ? `${os} ${osVer}` : os;
+  return {
+    label: model || (type === "Desktop" ? `${os} computer` : `${os} ${type.toLowerCase()}`),
+    model, os: osText, browser, type,
+    screen: `${screen.width}×${screen.height}`,
+    display: standalone ? "Installed app" : "Browser",
+    lang: navigator.language || "", tz: (Intl.DateTimeFormat().resolvedOptions().timeZone) || ""
+  };
+}
+
+function applyLogAccess(){ $("logMenuBtn").hidden = logEditor !== true; }
+function setLogAccess(r){
+  if(r && r.ok){
+    logEditor = !!r.isEditor;
+    store.set(LOG_FLAG_KEY, logEditor ? "1" : "0");
+  }
+  applyLogAccess();
+  if(!lgView.hidden) renderLogView();
+}
+async function logSignIn(){
+  if(!LOG_URL) return;
+  setLogAccess(await logCall({ action: "visit", device: await deviceInfo() }));
+}
+async function checkLogAccess(){
+  if(!LOG_URL || !accessToken || logEditor !== null) return;
+  setLogAccess(await logCall({ action: "me" }));
+}
+
+async function loadLog(){
+  if(lgLoading) return;
+  lgLoading = true; lgError = "";
+  $("lgRefresh").classList.add("spinning");
+  renderLogView();
+  const r = await logCall({ action: "list" });
+  lgLoading = false;
+  $("lgRefresh").classList.remove("spinning");
+  if(!r) lgError = "Couldn't reach the log service. Check your internet, then tap Refresh.";
+  else if(!r.ok) lgError = r.error === "forbidden" ? "forbidden"
+    : /bad_token|wrong_client|no_token/.test(r.error || "") ? "Your Google session is not accepted by the log service. Sign out and sign in again."
+    : "Log service error: " + (r.error || "unknown");
+  else { LOG_ROWS = r.rows || []; setLogAccess(r); }
+  if(lgError === "forbidden"){ logEditor = false; store.set(LOG_FLAG_KEY, "0"); applyLogAccess(); }
+  renderLogView();
+}
+
+const lgDay = d => d.toLocaleDateString("en-CA", { timeZone: LK_TZ });
+const lgClock = d => d.toLocaleTimeString("en-GB", { timeZone: LK_TZ, hour: "2-digit", minute: "2-digit", hour12: true });
+const lgDate = d => d.toLocaleDateString("en-GB", { timeZone: LK_TZ, day: "2-digit", month: "short", year: "numeric" });
+function lgAgo(d){
+  const s = Math.max(0, (Date.now() - d.getTime()) / 1000);
+  if(s < 60) return "just now";
+  if(s < 3600) return Math.floor(s / 60) + " min ago";
+  if(s < 86400) return Math.floor(s / 3600) + " h ago";
+  return Math.floor(s / 86400) + " d ago";
+}
+const LG_ICONS = {
+  Mobile:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18.5h2"/></svg>',
+  Tablet:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="2.5" width="15" height="19" rx="2.5"/><path d="M11 18.5h2"/></svg>',
+  Desktop: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M9 20h6M12 16v4"/></svg>'
+};
+const lgTag = access => `<span class="lg-tag ${access === "Editor" ? "editor" : access === "Viewer" ? "viewer" : "none"}">${esc(access || "—")}</span>`;
+const lgDevLine = r => [r.model || r.device, r.os, r.browser, r.display].filter(Boolean).map(String).join(" · ");
+
+function renderLogView(){
+  const out = $("lgList"), stats = $("lgStats");
+  const msg = t => { stats.innerHTML = ""; out.innerHTML = `<div class="card"><div class="empty">${t}</div></div>`; };
+  if(!LOG_URL) return msg("System Log is not set up yet. Add the Apps Script web app URL as LOG_URL in app.js (steps in system-log/SETUP.md).");
+  if(logEditor === false) return msg("Only people with Add bill (Editor) access can see the System Log.");
+  if(logEditor === null) return msg("Checking access…");
+  if(!LOG_ROWS){
+    if(lgError && lgError !== "forbidden") return msg(esc(lgError));
+    if(!lgLoading) loadLog();
+    return msg("Loading the log…");
+  }
+
+  const rows = LOG_ROWS.map(r => Object.assign({}, r, { d: new Date(r.t) })).filter(r => !isNaN(r.d));   // newest first
+  const people = new Map();
+  for(const r of rows){
+    const p = people.get(r.email);
+    if(p) p.count++; else people.set(r.email, { email: r.email, access: r.access, count: 1, last: r });
+  }
+  const today = lgDay(new Date()), weekAgo = Date.now() - 7 * 86400000;
+  const nToday = rows.filter(r => lgDay(r.d) === today).length, nWeek = rows.filter(r => r.d.getTime() >= weekAgo).length;
+  const stat = (cls, k, v, s) => `<div class="sv-stat ${cls}"><div class="k">${k}</div><div class="v num">${esc(v)}</div>${s ? `<div class="s">${esc(s)}</div>` : ""}</div>`;
+  stats.innerHTML = `<div class="sv-stats">` +
+    stat("main", "Sign-ins logged", fmtInt(rows.length), rows[0] ? `Latest: ${lgDate(rows[0].d)}, ${lgClock(rows[0].d)}` : "Nothing logged yet") +
+    stat("", "People", fmtInt(people.size)) + stat("", "Today", fmtInt(nToday)) + stat("", "7 days", fmtInt(nWeek)) + `</div>`;
+
+  const q = lgQuery.trim().toLowerCase();
+  const hay = r => [r.email, r.device, r.model, r.os, r.browser, r.type, r.display, r.access].join(" ").toLowerCase();
+  const note = lgError && lgError !== "forbidden" ? `<div class="lg-note">${esc(lgError)}</div>` : "";
+  let body = "";
+  if(lgTab === "people"){
+    const list = [...people.values()].filter(p => !q || hay(p.last).includes(q));
+    body = list.map(p => `<div class="lg-row"><div class="lg-ic">${esc((p.email[0] || "?").toUpperCase())}</div>` +
+      `<div><div class="lg-email">${esc(p.email)}${lgTag(p.access)}</div><div class="lg-dev">${fmtInt(p.count)} sign-in${p.count === 1 ? "" : "s"} · ${esc(lgDevLine(p.last))}</div></div>` +
+      `<div class="lg-when"><div class="lg-time">${lgClock(p.last.d)}</div><div class="lg-date">${lgDate(p.last.d)} · ${lgAgo(p.last.d)}</div></div></div>`).join("");
+  } else {
+    const list = rows.filter(r => !q || hay(r).includes(q));
+    body = list.map(r => `<div class="lg-row"><div class="lg-ic" title="${esc(r.type || "")}">${LG_ICONS[r.type] || LG_ICONS.Desktop}</div>` +
+      `<div><div class="lg-email">${esc(r.email)}${lgTag(r.access)}</div><div class="lg-dev">${esc(lgDevLine(r))}${r.screen ? " · " + esc(r.screen) : ""}</div></div>` +
+      `<div class="lg-when"><div class="lg-time">${lgClock(r.d)}</div><div class="lg-date">${lgDate(r.d)} · ${lgAgo(r.d)}</div></div></div>`).join("");
+  }
+  const empty = rows.length ? "Nothing matches your search." : "No sign-ins logged yet. They appear here after people sign in with Google.";
+  out.innerHTML = note + `<section class="card" aria-label="${lgTab === "people" ? "People" : "Sign-ins"}">${body || `<div class="empty">${empty}</div>`}</section>`;
+}
+
+$("logMenuBtn").addEventListener("click", () => { toggleMenu(false); location.hash = "log"; });
+$("lgBack").addEventListener("click", () => { location.hash = "dashboard"; });
+$("lgRefresh").addEventListener("click", () => { if(logEditor === true) loadLog(); });
+$("lgSearch").addEventListener("input", e => { lgQuery = e.target.value; renderLogView(); });
+$("lgSeg").addEventListener("click", e => {
+  const b = e.target.closest("button"); if(!b) return;
+  lgTab = b.dataset.t;
+  document.querySelectorAll("#lgSeg button").forEach(x => x.setAttribute("aria-selected", String(x === b)));
+  renderLogView();
+});
+applyLogAccess();
+
 function route(){
   const hash = location.hash;
-  dashView.hidden = hash === "#suppliers" || hash === "#sheets";
+  dashView.hidden = hash === "#suppliers" || hash === "#sheets" || hash === "#log";
   svView.hidden = hash !== "#suppliers";
   sbView.hidden = hash !== "#sheets";
+  lgView.hidden = hash !== "#log";
   // the sticky sheet tabs sit right under the header, whatever its height
   const hd = document.querySelector("header");
   if(hd) document.documentElement.style.setProperty("--hdr", hd.offsetHeight + "px");
   if(hash === "#suppliers") renderSupplierView();
   if(hash === "#sheets") renderSheetsView();
+  if(hash === "#log") renderLogView();
   window.scrollTo(0, 0);
 }
 
@@ -1407,4 +1591,5 @@ if(accessToken){
   }catch(e){ store.del(CACHE_KEY); }
   if(!currentUserEmail) fetchUserEmail();
   loadAll(false);
+  checkLogAccess();
 }
