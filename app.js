@@ -817,9 +817,13 @@ const SB_HINTS = {
   oldest: "Oldest entries first (top rows of the sheet)."
 };
 
-function sbDefaultSheet(){
+// index of the sheet for the current month (same rule the monthly chart uses)
+function sbCurrentSheet(){
   const now = new Date();
-  let k = now.getFullYear() === 2025 ? 0 : 1 + now.getMonth();
+  return now.getFullYear() === 2025 ? 0 : 1 + now.getMonth();
+}
+function sbDefaultSheet(){
+  let k = sbCurrentSheet();
   if(!(BY_SHEET[k] && BY_SHEET[k].length)){
     for(let j = SHEETS.length - 1; j >= 0; j--) if(BY_SHEET[j].length){ k = j; break; }
   }
@@ -901,6 +905,16 @@ $("sbTabs").addEventListener("click", e => {
 $("sbSort").addEventListener("change", e => { sbSort = e.target.value; renderSheetsView(); });
 $("sbSearch").addEventListener("input", e => { sbQuery = e.target.value; renderSheetsView(); });
 $("openSheetsBtn").addEventListener("click", () => { location.hash = "sheets"; });
+// Dashboard "This Month" card -> Sheets & Bills, on this month's sheet (search cleared, so every bill shows)
+function openThisMonthBills(){
+  sbSheet = sbCurrentSheet();
+  sbQuery = ""; $("sbSearch").value = "";
+  location.hash = "sheets";
+}
+$("kpiMonth").addEventListener("click", openThisMonthBills);
+$("kpiMonth").addEventListener("keydown", e => {
+  if(e.key === "Enter" || e.key === " "){ e.preventDefault(); openThisMonthBills(); }
+});
 $("sbBack").addEventListener("click", () => { location.hash = "dashboard"; });
 
 function route(){
@@ -1354,6 +1368,7 @@ function applyTheme(t, save){
   if(save){ try{ localStorage.setItem(THEME_KEY, t); }catch(e){} }
   const label = t === "light" ? "Switch to dark mode" : "Switch to light mode";
   document.querySelectorAll(".theme-btn").forEach(b => { b.setAttribute("aria-label", label); b.title = label; });
+  document.querySelectorAll(".theme-label").forEach(s => { s.textContent = label; });
 }
 document.querySelectorAll(".theme-btn").forEach(b => b.addEventListener("click", () => applyTheme(themeNow() === "light" ? "dark" : "light", true)));
 applyTheme(themeNow(), false);
