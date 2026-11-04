@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <!-- Security policy: only this site's own script and Google's sign-in script may run; data can only go to Google -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://accounts.google.com/gsi/client; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com/gsi/style; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://sheets.googleapis.com https://www.googleapis.com https://oauth2.googleapis.com https://accounts.google.com/gsi/; frame-src https://accounts.google.com/gsi/; worker-src 'self'; manifest-src 'self'; base-uri 'none'; form-action 'self'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://accounts.google.com/gsi/client; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com/gsi/style; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://script.google.com https://script.googleusercontent.com https://sheets.googleapis.com https://www.googleapis.com https://oauth2.googleapis.com https://accounts.google.com/gsi/; frame-src https://accounts.google.com/gsi/; worker-src 'self'; manifest-src 'self'; base-uri 'none'; form-action 'self'; object-src 'none'">
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <script src="theme.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover">
@@ -790,6 +790,46 @@
   .kpi-go{width:16px;height:16px;flex-shrink:0;color:var(--brand);transition:transform .18s ease;}
   .kpi-link:hover .kpi-go{transform:translateX(3px);}
 
+
+  /* ---------- System Log ---------- */
+  .mi-go{width:16px;height:16px;flex-shrink:0;color:#94978E;}
+  #logView .sec-head{margin-top:14px;}
+  #lgStats .sv-stats{margin-top:18px;}
+  .lg-controls{margin-bottom:16px;}
+  .lg-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;}
+  .lg-seg{display:inline-flex;gap:4px;padding:4px;background:var(--track-bg);border:1px solid var(--border);border-radius:13px;}
+  .lg-seg button{
+    background:none;border:0;color:var(--muted);padding:8px 14px;border-radius:10px;font-family:inherit;
+    font-size:13px;font-weight:600;cursor:pointer;transition:background .15s ease,color .15s ease;
+  }
+  .lg-seg button:hover{color:var(--text);}
+  .lg-seg button[aria-selected="true"]{background:var(--panel-alt);color:var(--text);box-shadow:0 2px 8px rgba(0,0,0,.25);}
+  .lg-seg button:focus-visible{outline:2px solid var(--brand);outline-offset:2px;}
+  #lgRefresh.spinning svg{animation:spin .8s linear infinite;}
+  .lg-note{font-size:12px;color:var(--amber);margin:0 2px 12px;}
+  .lg-row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:center;padding:12px 0;border-top:1px solid var(--border);}
+  .lg-row:first-of-type{border-top:0;}
+  .lg-ic{
+    width:38px;height:38px;border-radius:12px;display:grid;place-items:center;flex-shrink:0;
+    background:rgba(226,180,58,.14);color:var(--brand);font-weight:700;font-size:15px;
+  }
+  .lg-ic svg{width:19px;height:19px;}
+  .lg-email{font-size:13.5px;font-weight:600;overflow-wrap:anywhere;line-height:1.3;}
+  .lg-dev{font-size:12px;color:var(--muted);margin-top:2px;overflow-wrap:anywhere;line-height:1.35;}
+  .lg-when{text-align:right;white-space:nowrap;}
+  .lg-time{font-size:13px;font-weight:600;}
+  .lg-date{font-size:11.5px;color:var(--muted);margin-top:2px;}
+  .lg-tag{display:inline-block;font-size:10.5px;font-weight:700;padding:1px 8px;border-radius:999px;margin-left:6px;vertical-align:1px;white-space:nowrap;}
+  .lg-tag.editor{background:rgba(52,211,153,.16);color:var(--green);}
+  .lg-tag.viewer{background:rgba(226,180,58,.2);color:var(--brand);}
+  .lg-tag.none{background:rgba(242,112,122,.16);color:var(--rose);}
+  @media(max-width:560px){   /* phones: time goes under the email so long emails keep their full width */
+    .lg-row{grid-template-columns:auto minmax(0,1fr);gap:2px 12px;align-items:start;}
+    .lg-ic{grid-row:span 2;}
+    .lg-when{grid-column:2;text-align:left;white-space:normal;display:flex;flex-wrap:wrap;align-items:baseline;gap:0 8px;margin-top:3px;}
+    .lg-date{margin-top:0;}
+  }
+
   /* ---------- Phone header: keep the full title visible ---------- */
   @media(max-width:480px){
     .header-actions > .theme-btn{display:none;}     /* the toggle moves into the account menu */
@@ -952,6 +992,11 @@
             <span class="mi-ic gold" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg></span>
             <span class="mi-tx">Install app</span>
           </button>
+          <button class="menu-item" id="logMenuBtn" type="button" hidden>
+            <span class="mi-ic gold" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3.5" width="14" height="17" rx="2.5"/><path d="M9 8.5h6M9 12.5h6M9 16.5h3.5"/></svg></span>
+            <span class="mi-tx">System Log</span>
+            <svg class="mi-go" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
+          </button>
           <div class="menu-sep"></div>
           <button class="menu-item menu-danger" id="signOutBtn" type="button">
             <span class="mi-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h3"/><path d="M16 8l4 4-4 4M20 12H9"/></svg></span>
@@ -1075,6 +1120,31 @@
     <span class="sup-cta-tx"><b>Sheets &amp; Bills</b><small>Browse every bill, sheet by sheet</small></span>
     <svg class="sup-cta-ar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
   </button>
+</main>
+
+<main id="logView" hidden>
+  <div class="sv-top">
+    <button id="lgBack" class="btn" type="button">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>
+      Dashboard
+    </button>
+  </div>
+  <div class="sec-head"><div><div class="sec-title">System Log</div><div class="sec-sub">Who signed in with Google, when, and on which device</div></div></div>
+  <div id="lgStats"></div>
+  <section class="card lg-controls" aria-label="Log view">
+    <div class="lg-bar">
+      <div class="lg-seg" role="tablist" aria-label="Log view" id="lgSeg">
+        <button type="button" role="tab" data-t="recent" aria-selected="true">Sign-ins</button>
+        <button type="button" role="tab" data-t="people" aria-selected="false">People</button>
+      </div>
+      <button id="lgRefresh" class="btn" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v6h-6"/></svg>
+        Refresh
+      </button>
+    </div>
+    <input type="search" id="lgSearch" class="sb-search" placeholder="Search email, device or browser" autocomplete="off" spellcheck="false" enterkeyhint="search" aria-label="Search the log">
+  </section>
+  <div id="lgList" aria-live="polite"></div>
 </main>
 
 <main id="sheetsView" hidden>
