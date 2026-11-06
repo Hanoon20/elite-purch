@@ -1032,11 +1032,12 @@
         <div class="kpi-sub kpi-sub-row"><span><span id="k-monthbills">&mdash;</span> bills so far</span>
           <svg class="kpi-go" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></div>
       </div>
-      <div class="card kpi" style="--accent:var(--brand-2)">
+      <div class="card kpi kpi-link" id="kpiLast" role="button" tabindex="0" aria-label="Last month: show last month's bills" style="--accent:var(--brand-2)">
         <div class="kpi-top"><span class="kpi-label">Last Month</span>
           <span class="kpi-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5M12 7v5l3 2"/></svg></span></div>
         <div class="kpi-value num"><span id="k-last" class="skel">Rs. 0.0M</span></div>
-        <div class="kpi-sub"><span id="k-lastbills">&mdash;</span> bills</div>
+        <div class="kpi-sub kpi-sub-row"><span><span id="k-lastbills">&mdash;</span> bills</span>
+          <svg class="kpi-go" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></div>
       </div>
     </div>
   </section>
@@ -1058,8 +1059,8 @@
   <div class="sec-head"><div><div class="sec-title">Top 5 Suppliers</div><div class="sec-sub">By total purchase value</div></div></div>
   <section class="card" id="topSuppliersPanel" aria-label="Top suppliers">
     <div class="chips" id="topChips">
-      <button class="chip active" type="button" data-p="all">All time</button>
-      <button class="chip" type="button" data-p="thisMonth">This month</button>
+      <button class="chip" type="button" data-p="all">All time</button>
+      <button class="chip active" type="button" data-p="thisMonth">This month</button>
       <button class="chip" type="button" data-p="lastMonth">Last month</button>
       <button class="chip" type="button" data-p="last3">Last 3 months</button>
       <button class="chip" type="button" data-p="last30">Last 30 days</button>
