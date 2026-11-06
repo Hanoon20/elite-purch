@@ -8,13 +8,13 @@ if(window.top !== window.self){
   document.documentElement.innerHTML = "";
   throw new Error("Elite Ledger can't be embedded in another page.");
 }
-
+ 
 // ---------------------------------------------------------------------------
 // App feel: iOS Safari ignores user-scalable=no, so block pinch-zoom here too
 // ---------------------------------------------------------------------------
 ["gesturestart", "gesturechange"].forEach(ev => document.addEventListener(ev, e => e.preventDefault(), { passive: false }));
 document.addEventListener("touchmove", e => { if(e.touches.length > 1) e.preventDefault(); }, { passive: false });
-
+ 
 // ---------------------------------------------------------------------------
 // Config
 // ---------------------------------------------------------------------------
@@ -24,7 +24,7 @@ const SHEETS = ["2025", ...MONTH_SHEETS];
 const HEADER_MARKER = "supplier name";
 const API = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}`;
 const API_OPTS = "valueRenderOption=UNFORMATTED_VALUE&dateTimeRenderOption=SERIAL_NUMBER";
-
+ 
 // LOGIN — real security via Google Sign-In. Only Google accounts that are
 // (1) added as Test users in the OAuth consent screen AND
 // (2) given at least Viewer access to the Google Sheet itself
@@ -39,9 +39,9 @@ const LOCK_MSG_KEY = "ledger_lock_msg";  // reason shown on the sign-in screen a
 const IDLE_LOCK_MINUTES = 30;            // lock and wipe the data after this long without activity
 const LOG_URL = "https://script.google.com/macros/s/AKfycbxOqxaO86nlWEvHxBvUdoSHe79rDbRU6dzoowjlp78Sn3DdcyYiENx-vTqNk1EfqcpW/exec";                      // System Log: paste the Apps Script web app URL here (see system-log/SETUP.md). Empty = System Log is off.
 const LOG_FLAG_KEY = "ledger_log_editor"; // sessionStorage: "1" if this person has Add bill (Editor) access
-
+ 
 const $ = id => document.getElementById(id);
-
+ 
 // sessionStorage can throw (private mode, blocked storage) — never let that break the app.
 // sessionStorage (not localStorage) so nothing survives closing the tab/app.
 const store = {
@@ -49,17 +49,17 @@ const store = {
   set(k,v){ try{ sessionStorage.setItem(k,v); }catch(e){} },
   del(k){ try{ sessionStorage.removeItem(k); }catch(e){} }
 };
-
+ 
 // Fonts are loaded without blocking the first paint (and without an inline handler, which the CSP forbids)
 { const f = $("fontCss"); if(f) f.media = "all"; }
-
+ 
 let accessToken = null;
 let tokenExp = 0;
 let currentUserEmail = store.get(EMAIL_KEY);
 let tokenClient = null;
 let grantedScopes = "";
 let authWaiter = null;   // set while an in-app permission request (e.g. write access) is pending
-
+ 
 (function restoreToken(){
   try{
     const t = JSON.parse(store.get(TOKEN_KEY) || "null");
@@ -67,7 +67,7 @@ let authWaiter = null;   // set while an in-app permission request (e.g. write a
     else store.del(TOKEN_KEY);
   }catch(e){ store.del(TOKEN_KEY); }
 })();
-
+ 
 // ---------------------------------------------------------------------------
 // Auth
 // ---------------------------------------------------------------------------
@@ -100,7 +100,7 @@ function onGsiLoaded(){
 // The GSI script is async: it may finish before or after this script runs
 if(window.google && google.accounts && google.accounts.oauth2) onGsiLoaded();
 else $("gsiScript").addEventListener("load", onGsiLoaded);
-
+ 
 // If Google's sign-in script never arrives (blocked network, ad-blocker, weak signal) don't hang forever:
 // say so, and let the button retry by loading the script again.
 let gsiRetrying = false;
@@ -124,13 +124,13 @@ function retryGsi(){
   s.onerror = () => { gsiRetrying = false; gsiFailed(); };
   document.head.appendChild(s);
 }
-
+ 
 function showSignInError(code){
   $("lockError").textContent = (code === "access_denied" || code === "popup_closed")
     ? "Sign-in cancelled. Try again."
     : "⚠️ Access blocked — this Google account isn't authorized for this dashboard. Contact the admin to be added as a Test user + Sheet viewer.";
 }
-
+ 
 function signIn(){
   if(!tokenClient){ retryGsi(); return; }
   $("googleSignInBtn").disabled = true;
@@ -138,9 +138,9 @@ function signIn(){
   // Empty prompt: returning users skip the consent screen (faster sign-in)
   tokenClient.requestAccessToken({ prompt: "", login_hint: currentUserEmail || undefined });
 }
-
+ 
 const hasWriteScope = () => grantedScopes.split(/\s+/).includes(WRITE_SCOPE);
-
+ 
 // Must be called directly from a click handler, or the browser blocks Google's popup
 function requestWriteAccess(){
   return new Promise((resolve, reject) => {
@@ -149,7 +149,7 @@ function requestWriteAccess(){
     tokenClient.requestAccessToken({ prompt: "", scope: SCOPES + " " + WRITE_SCOPE, login_hint: currentUserEmail || undefined });
   });
 }
-
+ 
 function signOut(){
   if(accessToken && window.google && google.accounts && google.accounts.oauth2){
     try{ google.accounts.oauth2.revoke(accessToken, () => {}); }catch(e){}
@@ -158,7 +158,7 @@ function signOut(){
   accessToken = null;
   location.reload();
 }
-
+ 
 // Drops the session and every copy of the ledger data (memory, page, storage),
 // then reloads to a clean sign-in screen that explains why.
 function secureLock(message){
@@ -168,7 +168,7 @@ function secureLock(message){
   location.reload();
 }
 function lock(message){ secureLock(message || "Please sign in again."); }
-
+ 
 // ---------------------------------------------------------------------------
 // Auto-lock: after IDLE_LOCK_MINUTES without use, or when Google's 1-hour
 // session ends. Protects the data on a phone or PC left unattended.
@@ -186,7 +186,7 @@ function checkSession(){
 }
 setInterval(checkSession, 30000);
 document.addEventListener("visibilitychange", () => { if(document.visibilityState === "visible") checkSession(); });
-
+ 
 async function fetchUserEmail(){
   try{
     const res = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
@@ -202,7 +202,7 @@ async function fetchUserEmail(){
     }
   }catch(e){ /* non-fatal */ }
 }
-
+ 
 function showAccount(){
   const email = currentUserEmail || "";
   $("accountEmail").textContent = email || "Google account";
@@ -211,7 +211,7 @@ function showAccount(){
   $("avatar").classList.add("show");
   document.body.classList.add("authed");
 }
-
+ 
 function enterDashboard(){
   $("lockScreen").classList.add("hidden");
   showAccount();
@@ -220,7 +220,7 @@ function enterDashboard(){
   loadAll(false);
   logSignIn();
 }
-
+ 
 // ---------------------------------------------------------------------------
 // Data
 // ---------------------------------------------------------------------------
@@ -228,10 +228,10 @@ function enterDashboard(){
 let BILLS = [];
 let BY_SUPPLIER = new Map();   // supplier -> bills[]
 let BY_SHEET = SHEETS.map(() => []);   // sheet index -> bills[] in sheet row order
-
+ 
 const clean = v => (v === null || v === undefined) ? "" : String(v).replace(/[​-‍﻿]/g,"").trim();
 const esc = s => s.replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-
+ 
 function toLocalISODate(d){
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
 }
@@ -246,7 +246,7 @@ function serialToMs(serial){
   const d = new Date(Math.round((serial - 25569) * 86400000));
   return new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()).getTime();
 }
-
+ 
 function parseRows(rows, k, out){
   let i = 0;
   while(i < rows.length && clean(rows[i] && rows[i][0]).toLowerCase() !== HEADER_MARKER) i++;
@@ -259,9 +259,9 @@ function parseRows(rows, k, out){
     out.push({ s: s || "(Unnamed)", i: clean(r[1]), a, t: serialToMs(r[3]), k, r: i });
   }
 }
-
+ 
 class HttpError extends Error{ constructor(status, detail){ super(detail || "HTTP " + status); this.status = status; this.detail = detail || ""; } }
-
+ 
 async function api(url, body){
   const opts = { headers: { Authorization: `Bearer ${accessToken}` }, referrerPolicy: "no-referrer", cache: "no-store" };
   if(body){ opts.method = "POST"; opts.headers["Content-Type"] = "application/json"; opts.body = JSON.stringify(body); }
@@ -280,7 +280,7 @@ async function api(url, body){
 }
 const apiGet = url => api(url);
 const rangeFor = name => encodeURIComponent(`'${name}'!A:D`);
-
+ 
 // One batched request for all 13 sheets, asking Google for only the cell values
 // (no range metadata) to keep the download small. If a sheet tab is missing,
 // batchGet fails as a whole — fall back to per-sheet.
@@ -310,7 +310,7 @@ async function fetchAll(){
   if(!bills.length && errors.length === SHEETS.length && !forbidden) throw new Error("network");
   return { bills, errors, forbidden };
 }
-
+ 
 let loading = false;
 async function loadAll(manual){
   if(loading || !accessToken) return;
@@ -318,7 +318,7 @@ async function loadAll(manual){
   const btn = $("refreshBtn");
   btn.classList.add("spinning");
   if(manual) $("statusMsg").textContent = "Refreshing…";
-
+ 
   try{
     const { bills, errors, forbidden } = await fetchAll();
     if(forbidden && !bills.length){
@@ -337,14 +337,14 @@ async function loadAll(manual){
     btn.classList.remove("spinning");
   }
 }
-
+ 
 function setStatus(msg){ $("statusMsg").textContent = msg; }
 function setUpdated(when, stale){
   const t = when.toLocaleTimeString("en-LK", {hour:"2-digit", minute:"2-digit"});
   $("updatedAt").textContent = stale ? `Cached ${t} · refreshing…` : `Updated ${t}`;
   $("liveDot").classList.toggle("stale", stale);
 }
-
+ 
 function setData(bills){
   BILLS = bills;
   BY_SUPPLIER = new Map();
@@ -358,7 +358,7 @@ function setData(bills){
   // Paint on the next frame so input stays responsive
   requestAnimationFrame(() => { render(); if(!svView.hidden) renderSupplierView(); if(!sbView.hidden) renderSheetsView(); });
 }
-
+ 
 // ---------------------------------------------------------------------------
 // Formatting
 // ---------------------------------------------------------------------------
@@ -380,23 +380,23 @@ function setVal(id, text, title){
   el.classList.remove("skel");
   if(title) el.title = title;
 }
-
+ 
 // ---------------------------------------------------------------------------
 // Render — every aggregate is computed in a single pass over the bills
 // ---------------------------------------------------------------------------
 let selectedSheet = -1;
 let SHEET_SUMS = [], SHEET_COUNTS = [];
-
+ 
 function render(){
   const now = new Date();
   const y = now.getFullYear(), m = now.getMonth();
   const tmStart = new Date(y, m, 1).getTime(), tmEnd = new Date(y, m+1, 1).getTime();
   const lmStart = new Date(y, m-1, 1).getTime();
-
+ 
   let total = 0, month = 0, monthN = 0, last = 0, lastN = 0;
   const sums = new Array(SHEETS.length).fill(0), counts = new Array(SHEETS.length).fill(0);
   const bySup = new Map();
-
+ 
   for(const b of BILLS){
     total += b.a;
     sums[b.k] += b.a; counts[b.k]++;
@@ -408,7 +408,7 @@ function render(){
   }
   SHEET_SUMS = sums; SHEET_COUNTS = counts;
   const n = BILLS.length;
-
+ 
   setVal("k-total", fmtCompact(total), fmtMoney(total));
   setVal("k-month", fmtCompact(month), fmtMoney(month));
   setVal("k-last", fmtCompact(last), fmtMoney(last));
@@ -416,13 +416,13 @@ function render(){
   $("k-suppliers").textContent = fmtInt(bySup.size);
   $("k-monthbills").textContent = fmtInt(monthN);
   $("k-lastbills").textContent = fmtInt(lastN);
-
+ 
   renderChart(now);
   renderTopSuppliers();
   renderSupplierOptions(bySup);
   updateFinder();
 }
-
+ 
 function renderChart(now){
   const max = Math.max(1, ...SHEET_SUMS);
   if(selectedSheet < 0){
@@ -440,23 +440,23 @@ function renderChart(now){
   $("chartLabels").innerHTML = SHEETS.map((s, k) => `<span class="${k === selectedSheet ? "sel" : ""}">${s}</span>`).join("");
   showDetail(selectedSheet);
 }
-
+ 
 function showDetail(k){
   const total = SHEET_SUMS.reduce((a, b) => a + b, 0) || 1;
   $("detailName").textContent = k === 0 ? "2025 archive" : `${MONTH_SHEETS[k-1]} 2026`;
   $("detailVal").textContent = fmtMoney(SHEET_SUMS[k] || 0);
   $("detailSub").textContent = `${fmtInt(SHEET_COUNTS[k] || 0)} bills · ${((SHEET_SUMS[k] || 0) / total * 100).toFixed(1)}% of total`;
 }
-
+ 
 function selectBar(k){
   selectedSheet = k;
   document.querySelectorAll("#chart .bar-col").forEach((el, i) => el.classList.toggle("sel", i === k));
   document.querySelectorAll("#chartLabels span").forEach((el, i) => el.classList.toggle("sel", i === k));
   showDetail(k);
 }
-
-let topPeriod = "all";
-
+ 
+let topPeriod = "thisMonth";   // default period; keep in step with the .active chip in index.html
+ 
 // Returns {from, to, label} in local-midnight ms, or {msg} when custom dates are incomplete
 function topRange(){
   const now = new Date(), y = now.getFullYear(), m = now.getMonth(), d = now.getDate();
@@ -478,12 +478,12 @@ function topRange(){
     default: return { from: -Infinity, to: Infinity, label: "All time" };
   }
 }
-
+ 
 function renderTopSuppliers(){
   const list = $("topList"), summary = $("topSummary");
   const r = topRange();
   if(r.msg){ summary.innerHTML = ""; list.innerHTML = `<div class="empty">${esc(r.msg)}</div>`; return; }
-
+ 
   // aggregate in one pass; undated bills only count in All time
   const bySup = new Map();
   let total = 0, n = 0;
@@ -493,7 +493,7 @@ function renderTopSuppliers(){
     total += b.a; n++;
   }
   summary.innerHTML = `<span>${esc(r.label)}</span><span><b class="num">${fmtMoney(total)}</b> · ${fmtInt(n)} bill${n === 1 ? "" : "s"}</span>`;
-
+ 
   const top = [...bySup.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5);
   const max = top.length ? top[0][1] : 1;
   list.innerHTML = top.length ? top.map(([name, amt], i) => `
@@ -505,7 +505,7 @@ function renderTopSuppliers(){
       <div class="share-pct num">${total ? (amt / total * 100).toFixed(1) : "0.0"}%</div>
     </div>`).join("") : `<div class="empty">${BILLS.length ? "No bills in this period" : "No data yet"}</div>`;
 }
-
+ 
 $("topChips").addEventListener("click", e => {
   const c = e.target.closest(".chip"); if(!c) return;
   topPeriod = c.dataset.p;
@@ -522,21 +522,21 @@ $("topChips").addEventListener("click", e => {
   $(id).addEventListener("change", renderTopSuppliers);
   $(id).addEventListener("click", e => { try{ e.currentTarget.showPicker(); }catch(err){} });
 });
-
+ 
 // ---------------------------------------------------------------------------
 // Searchable supplier picker (shared by the finder and the Add Bill form)
 // ---------------------------------------------------------------------------
 let SUPPLIERS = [];          // [{name, total, lc}] sorted by name
 const COMBOS = [];
 let comboSeq = 0;
-
+ 
 function renderSupplierOptions(bySup){
   SUPPLIERS = [...bySup.entries()]
     .map(([name, total]) => ({ name, total, lc: name.toLowerCase() }))
     .sort((a, b) => a.name.localeCompare(b.name));
   COMBOS.forEach(c => c.refresh());
 }
-
+ 
 function createCombo(root, { labelId, placeholder, allowNew = false, onChange = () => {} }){
   const id = "cb" + (++comboSeq);
   root.innerHTML = `
@@ -555,7 +555,7 @@ function createCombo(root, { labelId, placeholder, allowNew = false, onChange = 
   const btn = root.querySelector(".combo-btn"), text = root.querySelector(".combo-btn span");
   const panel = root.querySelector(".combo-panel"), input = root.querySelector("input"), list = root.querySelector("ul");
   let value = "", matches = [], active = -1;
-
+ 
   function set(name, silent){
     value = name;
     text.textContent = name || placeholder;
@@ -609,7 +609,7 @@ function createCombo(root, { labelId, placeholder, allowNew = false, onChange = 
     close(true);
     set(s.name);
   }
-
+ 
   btn.addEventListener("click", () => panel.hidden ? open() : close(false));
   btn.addEventListener("keydown", e => {
     if(e.key === "ArrowDown"){ e.preventDefault(); open(); }
@@ -629,7 +629,7 @@ function createCombo(root, { labelId, placeholder, allowNew = false, onChange = 
   list.addEventListener("mousedown", e => e.preventDefault()); // keep focus in the search box
   list.addEventListener("click", e => { const o = e.target.closest(".combo-opt"); if(o) pick(+o.dataset.i); });
   document.addEventListener("click", e => { if(!root.contains(e.target)) close(false); });
-
+ 
   const combo = {
     get value(){ return value; },
     set, open, close,
@@ -643,14 +643,14 @@ function createCombo(root, { labelId, placeholder, allowNew = false, onChange = 
   COMBOS.push(combo);
   return combo;
 }
-
+ 
 const finderCombo = createCombo($("supplierCombo"), { labelId: "supplierLabel", placeholder: "Choose a supplier…", onChange: updateFinder });
-
+ 
 // ---------------------------------------------------------------------------
 // Quick finder
 // ---------------------------------------------------------------------------
 let finderMode = "range";
-
+ 
 function setMode(mode){
   finderMode = mode;
   document.querySelectorAll(".tab").forEach(t => t.setAttribute("aria-selected", String(t.dataset.mode === mode)));
@@ -658,7 +658,7 @@ function setMode(mode){
   $("dateFields").hidden = mode === "supplier";
   updateFinder();
 }
-
+ 
 function updateFinder(){
   const valEl = $("resultValue"), subEl = $("resultSub"), labelEl = $("resultLabel");
   const setMsg = (msg, cls) => { valEl.textContent = msg; valEl.className = "result-value num " + cls; subEl.textContent = ""; };
@@ -666,10 +666,10 @@ function updateFinder(){
   const supplier = finderCombo.value;
   labelEl.textContent = finderMode === "range" ? "Total purchase in range"
                       : finderMode === "supplier" ? "Supplier total (all dates)" : "Supplier total in range";
-
+ 
   if(!BILLS.length){ setMsg("Loading…", "muted"); return; }
   if(needSupplier && !supplier){ setMsg("Choose a supplier", "muted"); return; }
-
+ 
   let from = -Infinity, to = Infinity;
   if(needDates){
     const f = parseLocalMs($("dateFrom").value), t = parseLocalMs($("dateTo").value);
@@ -677,7 +677,7 @@ function updateFinder(){
     if(f > t){ setMsg("⚠️ From date is after To date", "err"); return; }
     from = f; to = t;
   }
-
+ 
   const pool = needSupplier ? (BY_SUPPLIER.get(supplier) || []) : BILLS;
   let sum = 0, count = 0;
   for(const b of pool){
@@ -688,7 +688,7 @@ function updateFinder(){
   valEl.textContent = fmtMoney(sum);
   subEl.textContent = `${fmtInt(count)} bill${count === 1 ? "" : "s"}` + (count ? ` · avg ${fmtMoney(sum / count)}` : "");
 }
-
+ 
 function applyPreset(p){
   const now = new Date(), y = now.getFullYear(), m = now.getMonth();
   let from, to;
@@ -707,7 +707,7 @@ function applyPreset(p){
   document.querySelectorAll("#presetChips .chip").forEach(c => c.classList.toggle("active", c.dataset.preset === p));
   updateFinder();
 }
-
+ 
 // ---------------------------------------------------------------------------
 // Supplier bills page: pick a supplier + period, see every bill (uses the data already loaded)
 // ---------------------------------------------------------------------------
@@ -715,12 +715,12 @@ const dashView = $("dashView"), svView = $("supplierView");
 const MONTH_LONG = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 let svPeriod = "thisMonth";
 const svCombo = createCombo($("svCombo"), { labelId: "svSupLabel", placeholder: "Choose a supplier…", onChange: () => renderSupplierView() });
-
+ 
 const fmtDay = ms => {
   const d = new Date(ms);
   return `${String(d.getDate()).padStart(2,"0")} ${MONTH_LONG[d.getMonth()].slice(0,3)} ${d.getFullYear()}`;
 };
-
+ 
 // Returns {from, to} in local-midnight ms, or {msg} when custom dates are incomplete
 function svRange(){
   const now = new Date(), y = now.getFullYear(), m = now.getMonth();
@@ -739,7 +739,7 @@ function svRange(){
     default: return { from: -Infinity, to: Infinity };
   }
 }
-
+ 
 function svPeriodLabel(r){
   if(svPeriod === "all") return "All time";
   if(svPeriod === "thisMonth" || svPeriod === "lastMonth"){
@@ -747,38 +747,38 @@ function svPeriodLabel(r){
   }
   return `${fmtDay(r.from)} – ${fmtDay(r.to)}`;
 }
-
+ 
 function renderSupplierView(){
   const out = $("svOut");
   const card = msg => { out.innerHTML = `<div class="card" style="margin-top:14px"><div class="empty">${msg}</div></div>`; };
   const supplier = svCombo.value;
-
+ 
   if(!BILLS.length){ card("Loading bills…"); return; }
   if(!supplier){ card("Choose a supplier to see their bills."); return; }
   const r = svRange();
   if(r.msg){ card(esc(r.msg)); return; }
-
+ 
   const all = BY_SUPPLIER.get(supplier) || [];
   const undated = all.filter(b => b.t === null).length;
   const list = all.filter(b => b.t === null ? svPeriod === "all" : (b.t >= r.from && b.t <= r.to));
   // newest first; undated bills (all-time view only) go last
   list.sort((a, b) => (a.t === null) - (b.t === null) || (b.t || 0) - (a.t || 0) || b.k - a.k);
-
+ 
   const total = list.reduce((s, b) => s + b.a, 0);
   const biggest = list.reduce((m, b) => Math.max(m, b.a), 0);
   const stat = (cls, label, value, sub) =>
     `<div class="sv-stat ${cls}"><div class="k">${label}</div><div class="v num" title="${esc(value.full || "")}">${esc(value.text)}</div>${sub ? `<div class="s">${esc(sub)}</div>` : ""}</div>`;
   const money = n => ({ text: fmtCompact(n), full: fmtMoney(n) });
-
+ 
   let html = `<div class="sv-stats">` +
     stat("main", "Total", money(total), `${fmtInt(list.length)} bill${list.length === 1 ? "" : "s"} · ${svPeriodLabel(r)}`) +
     stat("", "Bills", { text: fmtInt(list.length) }) +
     stat("", "Average", money(list.length ? total / list.length : 0)) +
     stat("", "Largest", money(biggest)) +
     `</div>`;
-
+ 
   html += `<section class="card" aria-label="Bills"><div class="sv-head"><div class="sv-name">${esc(supplier)}</div><div class="sv-period">${esc(svPeriodLabel(r))}</div></div>`;
-
+ 
   if(!list.length){
     html += `<div class="empty">No bills for this supplier in this period.</div>`;
   } else {
@@ -808,7 +808,7 @@ function renderSupplierView(){
   html += `</section>`;
   out.innerHTML = html;
 }
-
+ 
 // ---------------------------------------------------------------------------
 // Sheets & Bills page: pick a sheet (2025, Jan … Dec), see all its bills, sort / search them
 // ---------------------------------------------------------------------------
@@ -820,11 +820,16 @@ const SB_HINTS = {
   recent: "Newest entries first, based on the order bills were added in the sheet (last row = latest).",
   oldest: "Oldest entries first (top rows of the sheet)."
 };
-
+ 
 // index of the sheet for the current month (same rule the monthly chart uses)
 function sbCurrentSheet(){
   const now = new Date();
   return now.getFullYear() === 2025 ? 0 : 1 + now.getMonth();
+}
+// sheet for last month (January -> the 2025 archive, which holds December 2025)
+function sbLastSheet(){
+  const now = new Date();
+  return now.getFullYear() === 2025 || now.getMonth() === 0 ? 0 : now.getMonth();
 }
 function sbDefaultSheet(){
   let k = sbCurrentSheet();
@@ -833,7 +838,7 @@ function sbDefaultSheet(){
   }
   return k;
 }
-
+ 
 function sbRenderTabs(){
   const box = $("sbTabs");
   box.innerHTML = SHEETS.map((s, k) => {
@@ -844,7 +849,7 @@ function sbRenderTabs(){
   const sel = box.querySelector('[aria-selected="true"]');
   if(sel) box.scrollLeft = sel.offsetLeft - (box.clientWidth - sel.offsetWidth) / 2;
 }
-
+ 
 function sbSorted(rows){
   const nullLast = (a, b) => (a.t === null) - (b.t === null);
   switch(sbSort){
@@ -858,7 +863,7 @@ function sbSorted(rows){
     default:         return rows;
   }
 }
-
+ 
 function renderSheetsView(){
   const stats = $("sbStats"), list = $("sbList");
   const msg = t => `<div class="card"><div class="empty">${t}</div></div>`;
@@ -866,12 +871,12 @@ function renderSheetsView(){
   if(sbSheet < 0) sbSheet = sbDefaultSheet();
   sbRenderTabs();
   $("sbHint").textContent = SB_HINTS[sbSort] || "";
-
+ 
   const all = BY_SHEET[sbSheet];
   const q = sbQuery.trim().toLowerCase();
   let rows = q ? all.filter(b => b.s.toLowerCase().includes(q) || b.i.toLowerCase().includes(q)) : all.slice();
   rows = sbSorted(rows);
-
+ 
   let total = 0, biggest = 0;
   const sups = new Set();
   for(const b of rows){ total += b.a; if(b.a > biggest) biggest = b.a; sups.add(b.s); }
@@ -883,23 +888,23 @@ function renderSheetsView(){
     stat("", "Suppliers", fmtInt(sups.size)) +
     stat("", "Largest", fmtCompact(biggest), "", fmtMoney(biggest)) +
     `</div>`;
-
+ 
   if(!all.length){ list.innerHTML = msg(`No bills in ${esc(SB_TITLE(sbSheet))} yet.`); return; }
   if(!rows.length){ list.innerHTML = msg(`No bills match “${esc(sbQuery.trim())}” in ${esc(SB_TITLE(sbSheet))}.`); return; }
-
+ 
   const row = b => `<div class="sb-row"><div class="sb-sup">${esc(b.s)}</div>` +
     `<div class="sb-meta"><span class="sb-inv${b.i ? "" : " none"}">${b.i ? esc(b.i) : "No invoice no."}</span>` +
     `<span class="sb-date">${b.t === null ? "No date" : fmtDay(b.t)}</span>` +
     `<span class="sb-rown">${typeof b.r === "number" ? "Row " + (b.r + 1) : ""}</span></div>` +
     `<div class="sb-amt num">${fmtMoney(b.a)}</div></div>`;
-
+ 
   list.innerHTML = `<section class="card" aria-label="Bills in ${esc(SB_TITLE(sbSheet))}">` +
     `<div class="sv-head"><div class="sv-name">${esc(SB_TITLE(sbSheet))}</div>` +
     `<div class="sb-count">${q ? `Showing ${fmtInt(rows.length)} of ${fmtInt(all.length)} bills` : `${fmtInt(rows.length)} bill${rows.length === 1 ? "" : "s"}`}</div></div>` +
     `<div class="sb-colhead" aria-hidden="true"><span>Supplier</span><span>Invoice</span><span>Date</span><span>Row</span><span class="r">Amount</span></div>` +
     rows.map(row).join("") + `</section>`;
 }
-
+ 
 $("sbTabs").addEventListener("click", e => {
   const t = e.target.closest(".sb-tab"); if(!t) return;
   sbSheet = +t.dataset.k;
@@ -915,12 +920,21 @@ function openThisMonthBills(){
   sbQuery = ""; $("sbSearch").value = "";
   location.hash = "sheets";
 }
+function openLastMonthBills(){
+  sbSheet = sbLastSheet();
+  sbQuery = ""; $("sbSearch").value = "";
+  location.hash = "sheets";
+}
 $("kpiMonth").addEventListener("click", openThisMonthBills);
 $("kpiMonth").addEventListener("keydown", e => {
   if(e.key === "Enter" || e.key === " "){ e.preventDefault(); openThisMonthBills(); }
 });
+$("kpiLast").addEventListener("click", openLastMonthBills);
+$("kpiLast").addEventListener("keydown", e => {
+  if(e.key === "Enter" || e.key === " "){ e.preventDefault(); openLastMonthBills(); }
+});
 $("sbBack").addEventListener("click", () => { location.hash = "dashboard"; });
-
+ 
 // ---------------------------------------------------------------------------
 // System Log: every Google sign-in is recorded by the Apps Script web app (system-log/Code.gs).
 // The server decides who may see it: only the Sheet owner / Editors (the people who can use Add bill).
@@ -930,7 +944,7 @@ const lgView = $("logView");
 let logEditor = store.get(LOG_FLAG_KEY) === "1" ? true : store.get(LOG_FLAG_KEY) === "0" ? false : null;   // null = not known yet
 let LOG_ROWS = null, lgLoading = false, lgError = "", lgTab = "recent", lgQuery = "";
 const LK_TZ = "Asia/Colombo";
-
+ 
 async function logCall(payload){
   if(!LOG_URL || !accessToken) return null;
   const ctl = new AbortController();
@@ -946,7 +960,7 @@ async function logCall(payload){
   }catch(e){ return null; }
   finally{ clearTimeout(timer); }
 }
-
+ 
 // What we record about the device: type, model (when the browser shares it), OS, browser, screen. No IP, no location.
 async function deviceInfo(){
   const ua = navigator.userAgent || "", uad = navigator.userAgentData;
@@ -961,7 +975,7 @@ async function deviceInfo(){
   else if(/Mac OS X/.test(ua)) os = "macOS";
   else if(/Linux/.test(ua)) os = "Linux";
   if((os === "iOS" || os === "iPadOS") && (m = ua.match(/OS (\d+)[_\d]*/))) osVer = m[1];
-
+ 
   let browser = "Unknown";
   const pick = (re, name) => { const x = ua.match(re); return x ? `${name} ${x[1]}` : name; };
   if(/Edg\//.test(ua)) browser = pick(/Edg\/(\d+)/, "Edge");
@@ -971,7 +985,7 @@ async function deviceInfo(){
   else if(/FxiOS|Firefox/.test(ua)) browser = pick(/(?:FxiOS|Firefox)\/(\d+)/, "Firefox");
   else if(/Chrome\//.test(ua)) browser = pick(/Chrome\/(\d+)/, "Chrome");
   else if(/Safari\//.test(ua)) browser = pick(/Version\/(\d+)/, "Safari");
-
+ 
   try{   // Chrome on Android shares the real model name on request
     if(uad && uad.getHighEntropyValues){
       const v = await uad.getHighEntropyValues(["model", "platformVersion"]);
@@ -979,7 +993,7 @@ async function deviceInfo(){
       if(os === "Android" && v.platformVersion) osVer = String(v.platformVersion).split(".")[0];
     }
   }catch(e){}
-
+ 
   const standalone = matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
   const osText = osVer ? `${os} ${osVer}` : os;
   return {
@@ -990,7 +1004,7 @@ async function deviceInfo(){
     lang: navigator.language || "", tz: (Intl.DateTimeFormat().resolvedOptions().timeZone) || ""
   };
 }
-
+ 
 function applyLogAccess(){ $("logMenuBtn").hidden = logEditor !== true; }
 function setLogAccess(r){
   if(r && r.ok){
@@ -1008,7 +1022,7 @@ async function checkLogAccess(){
   if(!LOG_URL || !accessToken || logEditor !== null) return;
   setLogAccess(await logCall({ action: "me" }));
 }
-
+ 
 async function loadLog(){
   if(lgLoading) return;
   lgLoading = true; lgError = "";
@@ -1025,7 +1039,7 @@ async function loadLog(){
   if(lgError === "forbidden"){ logEditor = false; store.set(LOG_FLAG_KEY, "0"); applyLogAccess(); }
   renderLogView();
 }
-
+ 
 const lgDay = d => d.toLocaleDateString("en-CA", { timeZone: LK_TZ });
 const lgClock = d => d.toLocaleTimeString("en-GB", { timeZone: LK_TZ, hour: "2-digit", minute: "2-digit", hour12: true });
 const lgDate = d => d.toLocaleDateString("en-GB", { timeZone: LK_TZ, day: "2-digit", month: "short", year: "numeric" });
@@ -1043,7 +1057,7 @@ const LG_ICONS = {
 };
 const lgTag = access => `<span class="lg-tag ${access === "Editor" ? "editor" : access === "Viewer" ? "viewer" : "none"}">${esc(access || "—")}</span>`;
 const lgDevLine = r => [r.model || r.device, r.os, r.browser, r.display].filter(Boolean).map(String).join(" · ");
-
+ 
 function renderLogView(){
   const out = $("lgList"), stats = $("lgStats");
   const msg = t => { stats.innerHTML = ""; out.innerHTML = `<div class="card"><div class="empty">${t}</div></div>`; };
@@ -1055,7 +1069,7 @@ function renderLogView(){
     if(!lgLoading) loadLog();
     return msg("Loading the log…");
   }
-
+ 
   const rows = LOG_ROWS.map(r => Object.assign({}, r, { d: new Date(r.t) })).filter(r => !isNaN(r.d));   // newest first
   const people = new Map();
   for(const r of rows){
@@ -1068,7 +1082,7 @@ function renderLogView(){
   stats.innerHTML = `<div class="sv-stats">` +
     stat("main", "Sign-ins logged", fmtInt(rows.length), rows[0] ? `Latest: ${lgDate(rows[0].d)}, ${lgClock(rows[0].d)}` : "Nothing logged yet") +
     stat("", "People", fmtInt(people.size)) + stat("", "Today", fmtInt(nToday)) + stat("", "7 days", fmtInt(nWeek)) + `</div>`;
-
+ 
   const q = lgQuery.trim().toLowerCase();
   const hay = r => [r.email, r.device, r.model, r.os, r.browser, r.type, r.display, r.access].join(" ").toLowerCase();
   const note = lgError && lgError !== "forbidden" ? `<div class="lg-note">${esc(lgError)}</div>` : "";
@@ -1087,7 +1101,7 @@ function renderLogView(){
   const empty = rows.length ? "Nothing matches your search." : "No sign-ins logged yet. They appear here after people sign in with Google.";
   out.innerHTML = note + `<section class="card" aria-label="${lgTab === "people" ? "People" : "Sign-ins"}">${body || `<div class="empty">${empty}</div>`}</section>`;
 }
-
+ 
 $("logMenuBtn").addEventListener("click", () => { toggleMenu(false); location.hash = "log"; });
 $("lgBack").addEventListener("click", () => { location.hash = "dashboard"; });
 $("lgRefresh").addEventListener("click", () => { if(logEditor === true) loadLog(); });
@@ -1099,7 +1113,7 @@ $("lgSeg").addEventListener("click", e => {
   renderLogView();
 });
 applyLogAccess();
-
+ 
 function route(){
   const hash = location.hash;
   dashView.hidden = hash === "#suppliers" || hash === "#sheets" || hash === "#log";
@@ -1114,11 +1128,11 @@ function route(){
   if(hash === "#log") renderLogView();
   window.scrollTo(0, 0);
 }
-
+ 
 $("openSupBtn").addEventListener("click", () => { location.hash = "suppliers"; });
 $("svBack").addEventListener("click", () => { location.hash = "dashboard"; });
 window.addEventListener("hashchange", route);
-
+ 
 $("svChips").addEventListener("click", e => {
   const c = e.target.closest(".chip"); if(!c) return;
   svPeriod = c.dataset.p;
@@ -1135,35 +1149,35 @@ $("svChips").addEventListener("click", e => {
   $(id).addEventListener("change", renderSupplierView);
   $(id).addEventListener("click", e => { try{ e.currentTarget.showPicker(); }catch(err){} });
 });
-
+ 
 // ---------------------------------------------------------------------------
 // Add bill
 // ---------------------------------------------------------------------------
 const LEDGER_YEAR = 2026;   // the Jan…Dec month tabs hold this year's bills
 class UserError extends Error{}
 class DuplicateError extends Error{ constructor(info){ super("duplicate"); this.info = info; } }
-
+ 
 const billDialog = $("billDialog");
 const billCombo = createCombo($("billSupplierCombo"), {
   labelId: "billSupplierLabel", placeholder: "Search or add a supplier…", allowNew: true,
   onChange: () => { setFieldErr("Supplier", ""); onBillEdit(); if(billCombo.value) $("billAmount").focus(); }
 });
 let billSaving = false, dupConfirmedKey = "";
-
+ 
 const dupKey = (supplier, invoice) => supplier.trim().toLowerCase() + "\u0001" + String(invoice).trim().toLowerCase();
-
+ 
 function parseAmount(str){
   const t = String(str).replace(/rs\.?/i, "").replace(/[,\s]/g, "");
   if(!/^\d+(\.\d{1,2})?$/.test(t) && !/^\.\d{1,2}$/.test(t)) return NaN;
   return Math.round(parseFloat(t) * 100) / 100;
 }
-
+ 
 function setFieldErr(key, msg){
   const el = $("err" + key);
   el.textContent = msg;
   el.closest(".field").classList.toggle("invalid", !!msg);
 }
-
+ 
 function readBillForm(){
   // Strip control characters so nothing odd is ever written into the Sheet
   const supplier = billCombo.value.replace(/[\u0000-\u001F\u007F]/g, "").trim().replace(/\s+/g, " ").slice(0, 120);
@@ -1182,7 +1196,7 @@ function readBillForm(){
   else if(d.getFullYear() !== LEDGER_YEAR) errs.Date = `Month tabs are for ${LEDGER_YEAR} — pick a ${LEDGER_YEAR} date`;
   return { supplier, invoice, amount, d, errs };
 }
-
+ 
 // Live feedback while typing: destination tab, "new supplier" tag, duplicate reset
 function onBillEdit(){
   const ms = parseLocalMs($("billDate").value);
@@ -1206,7 +1220,7 @@ function onBillEdit(){
   }
   $("formErr").textContent = "";
 }
-
+ 
 function showDuplicate(f, info){
   dupConfirmedKey = dupKey(f.supplier, f.invoice);
   $("dupWarn").innerHTML = `<b>Possible duplicate.</b> ${esc(f.supplier)} already has invoice <b>${esc(f.invoice)}</b>` +
@@ -1215,7 +1229,7 @@ function showDuplicate(f, info){
   $("billSaveLabel").textContent = "Save anyway";
   $("dupWarn").scrollIntoView({ block: "nearest", behavior: "smooth" });
 }
-
+ 
 function resetBillForm(keepContext){
   if(!keepContext){
     billCombo.set("", true);
@@ -1230,9 +1244,9 @@ function resetBillForm(keepContext){
   $("billSaveLabel").textContent = "Save bill";
   onBillEdit();
 }
-
+ 
 function isBillDirty(){ return !!(billCombo.value || $("billInvoice").value.trim() || $("billAmount").value.trim()); }
-
+ 
 function openBillForm(){
   if(!accessToken) return;
   if(hasWriteScope()){ showBillForm(); return; }
@@ -1243,7 +1257,7 @@ function openBillForm(){
         : "Couldn't get permission to edit the Sheet. Please try again.", "error");
   });
 }
-
+ 
 function showBillForm(){
   if(billDialog.open) return;
   resetBillForm(false);
@@ -1252,9 +1266,9 @@ function showBillForm(){
   // (deferred so the click that opened the dialog doesn't immediately close the list again)
   if(matchMedia("(pointer: fine)").matches) setTimeout(() => billCombo.open(), 0); else billCombo.focus();
 }
-
+ 
 function closeBillForm(){ if(!billSaving) billDialog.close(); }
-
+ 
 // iPhone keyboard: iOS doesn't shrink the page when the keyboard opens, so a bottom
 // sheet would sit behind it. Lift the sheet above the keyboard and keep the field in view.
 function fitSheetToKeyboard(){
@@ -1273,7 +1287,7 @@ if(window.visualViewport){
 billDialog.addEventListener("focusin", e => {
   if(e.target.matches("input")) setTimeout(() => e.target.scrollIntoView({ block: "center", behavior: "smooth" }), 300);
 });
-
+ 
 function setSaving(on){
   billSaving = on;
   $("billSave").disabled = on;
@@ -1281,7 +1295,7 @@ function setSaving(on){
   $("billCancel").disabled = on;
   if(on) $("billSaveLabel").textContent = "Saving…";
 }
-
+ 
 async function submitBill(e){
   e.preventDefault();
   if(billSaving) return;
@@ -1300,7 +1314,7 @@ async function submitBill(e){
     const dup = BILLS.find(b => dupKey(b.s, b.i) === key);
     if(dup){ showDuplicate(f, { tab: SHEETS[dup.k], amount: dup.a }); return; }
   }
-
+ 
   setSaving(true);
   let ok = false;
   try{
@@ -1328,7 +1342,7 @@ async function submitBill(e){
     $("billSaveLabel").textContent = dupConfirmedKey && !ok ? "Save anyway" : "Save bill";
   }
 }
-
+ 
 function billErrorMessage(err){
   if(err instanceof UserError) return err.message;
   if(err.status === 403){
@@ -1340,7 +1354,7 @@ function billErrorMessage(err){
   if(!err.status) return "Couldn't reach Google. Check your internet connection and try again — nothing was saved.";
   return `Google Sheets returned an error (${err.status})${err.detail ? ": " + err.detail : ""}. Nothing was saved.`;
 }
-
+ 
 // Writes one bill into the first free row after the last bill of the month tab.
 // Only A–D are touched (values + matching number formats), so formulas or notes
 // in other columns stay intact. The tab is re-read right before writing so the
@@ -1358,11 +1372,11 @@ async function saveBill(f, force){
     if(e.status === 400) throw new UserError(`There's no "${tab}" tab in the Sheet yet. Create it with the "Supplier Name" header row, then try again. Nothing was saved.`);
     throw e;
   }
-
+ 
   const rows = vals.values || [];
   const header = rows.findIndex(r => clean(r && r[0]).toLowerCase() === HEADER_MARKER);
   if(header < 0) throw new UserError(`The "${tab}" tab has no "Supplier Name" header row, so the bill can't be placed safely. Nothing was saved.`);
-
+ 
   const key = dupKey(f.supplier, f.invoice);
   let last = header;
   for(let i = header + 1; i < rows.length; i++){
@@ -1392,7 +1406,7 @@ async function saveBill(f, force){
   const invoiceValue = /^[1-9]\d{0,14}$/.test(f.invoice) ? { numberValue: Number(f.invoice) } : { stringValue: f.invoice };
   const serial = Date.UTC(f.d.getFullYear(), f.d.getMonth(), f.d.getDate()) / 86400000 + 25569;
   const cell = (col, values, fields) => ({ updateCells: { start: { sheetId, rowIndex: target, columnIndex: col }, rows: [{ values }], fields } });
-
+ 
   const requests = [];
   if(target >= rowCount) requests.push({ appendDimension: { sheetId, dimension: "ROWS", length: target - rowCount + 1 } });
   requests.push(cell(0, [
@@ -1402,7 +1416,7 @@ async function saveBill(f, force){
   ], "userEnteredValue"));
   if(amountFmt) requests.push(cell(2, [{ userEnteredFormat: { numberFormat: amountFmt } }], "userEnteredFormat.numberFormat"));
   requests.push(cell(3, [{ userEnteredValue: { numberValue: serial }, userEnteredFormat: { numberFormat: dateFmt } }], "userEnteredValue,userEnteredFormat.numberFormat"));
-
+ 
   try{
     await api(`${API}:batchUpdate?fields=spreadsheetId`, { requests });
   }catch(e){
@@ -1411,7 +1425,7 @@ async function saveBill(f, force){
   }
   return { tab, row: target + 1 };
 }
-
+ 
 let toastTimer = 0;
 function toast(msg, type){
   const t = $("toast");
@@ -1420,7 +1434,7 @@ function toast(msg, type){
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => t.classList.remove("show"), type === "error" ? 6000 : 4000);
 }
-
+ 
 // ---------------------------------------------------------------------------
 // Events
 // ---------------------------------------------------------------------------
@@ -1457,7 +1471,7 @@ $("dateQuick").addEventListener("click", e => {
 $("billDate").min = `${LEDGER_YEAR}-01-01`;
 $("billDate").max = `${LEDGER_YEAR}-12-31`;
 $("signOutBtn").addEventListener("click", e => { e.stopPropagation(); signOut(); });
-
+ 
 const avatar = $("avatar"), menu = $("accountMenu");
 function toggleMenu(open){
   menu.classList.toggle("open", open);
@@ -1467,7 +1481,7 @@ avatar.addEventListener("click", e => { if(!menu.contains(e.target)) toggleMenu(
 avatar.addEventListener("keydown", e => { if(e.key === "Enter" || e.key === " "){ e.preventDefault(); toggleMenu(!menu.classList.contains("open")); } });
 document.addEventListener("click", e => { if(!avatar.contains(e.target)) toggleMenu(false); });
 document.addEventListener("keydown", e => { if(e.key === "Escape") toggleMenu(false); });
-
+ 
 document.querySelector(".tabs").addEventListener("click", e => {
   const t = e.target.closest(".tab"); if(t) setMode(t.dataset.mode);
 });
@@ -1478,7 +1492,7 @@ $("presetChips").addEventListener("click", e => {
   document.querySelectorAll("#presetChips .chip").forEach(c => c.classList.remove("active"));
   updateFinder();
 }));
-
+ 
 // Chart: event delegation (one listener, not one per bar) + hover tooltip
 const chartEl = $("chart"), tip = $("tooltip");
 chartEl.addEventListener("click", e => {
@@ -1498,7 +1512,7 @@ chartEl.addEventListener("pointermove", e => {
   tip.classList.add("show");
 });
 chartEl.addEventListener("pointerleave", () => tip.classList.remove("show"));
-
+ 
 // ---------------------------------------------------------------------------
 // Install as an app (PWA)
 // ---------------------------------------------------------------------------
@@ -1506,7 +1520,7 @@ let installPrompt = null;
 const isStandalone = () => matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
 const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 const BANNER_KEY = "ledger_install_banner_dismissed";
-
+ 
 function showInstallOptions(){
   const can = !isStandalone() && (installPrompt || isIOS);
   $("installMenuBtn").hidden = !can;
@@ -1515,7 +1529,7 @@ function showInstallOptions(){
   try{ dismissed = localStorage.getItem(BANNER_KEY) === "1"; }catch(e){}
   $("installBanner").hidden = !(can && !dismissed && matchMedia("(max-width: 679px)").matches);
 }
-
+ 
 async function installApp(){
   if(isIOS && !installPrompt){ $("iosDialog").showModal(); return; }
   if(!installPrompt) return;
@@ -1525,12 +1539,12 @@ async function installApp(){
   if(outcome === "accepted") toast("Installing Elite Ledger… it will appear with your apps.", "success");
   showInstallOptions();
 }
-
+ 
 function dismissBanner(){
   try{ localStorage.setItem(BANNER_KEY, "1"); }catch(e){}
   $("installBanner").hidden = true;
 }
-
+ 
 window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); installPrompt = e; showInstallOptions(); });
 window.addEventListener("appinstalled", () => { installPrompt = null; showInstallOptions(); toast("Elite Ledger installed ✓", "success"); });
 ["installMenuBtn", "installLockBtn", "installBannerBtn"].forEach(id => $(id).addEventListener("click", () => { toggleMenu(false); installApp(); }));
@@ -1538,11 +1552,11 @@ $("installBannerClose").addEventListener("click", dismissBanner);
 $("iosClose").addEventListener("click", () => $("iosDialog").close());
 $("iosDialog").addEventListener("click", e => { if(e.target === $("iosDialog")) $("iosDialog").close(); });
 showInstallOptions();
-
+ 
 if("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")){
   window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
 }
-
+ 
 // ---------------------------------------------------------------------------
 // Light / dark theme (initial theme is applied by theme.js before first paint)
 // ---------------------------------------------------------------------------
@@ -1564,20 +1578,20 @@ try{
     if(saved !== "light" && saved !== "dark") applyTheme(e.matches ? "light" : "dark", false);
   });
 }catch(e){}
-
+ 
 { const lf = document.querySelector(".lock-foot"); if(lf) lf.append(" · v10"); }
-
+ 
 // ---------------------------------------------------------------------------
 // Boot
 // ---------------------------------------------------------------------------
 applyPreset("thisMonth");
 route();
-
+ 
 { // Explain an auto-lock on the sign-in screen
   const msg = store.get(LOCK_MSG_KEY);
   if(msg){ $("lockError").textContent = msg; store.del(LOCK_MSG_KEY); }
 }
-
+ 
 if(accessToken){
   $("lockScreen").classList.add("hidden");
   showAccount();
