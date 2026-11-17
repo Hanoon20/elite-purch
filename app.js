@@ -23,6 +23,8 @@ const MONTH_SHEETS = ["Jan","Feb","Mar","Apr","May","June","July","Aug","Sep","O
 const SALE_TAB = "Sale";                               // extra tab for sale purchases (same A–D columns as the month tabs)
 const SHEETS = ["2025", ...MONTH_SHEETS, SALE_TAB];
 const SALE_K = SHEETS.length - 1;                      // sheet index of the Sale tab
+// short axis label so 14 labels fit under their bars ("June" -> "Jun")
+const chartLabel = s => (s === "June" || s === "July") ? s.slice(0, 3) : s;
 const sheetLabel = k => k === 0 ? "2025 archive" : k === SALE_K ? "Sale purchases" : `${MONTH_SHEETS[k-1]} 2026`;
 const HEADER_MARKER = "supplier name";
 const API = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}`;
@@ -440,7 +442,7 @@ function renderChart(now){
     return `<button class="bar-col${k === selectedSheet ? " sel" : ""}" type="button" role="listitem" data-k="${k}"
       aria-label="${s}: ${fmtMoney(SHEET_SUMS[k])}"><div class="bar" style="height:${h}%;animation-delay:${k*25}ms"></div></button>`;
   }).join("");
-  $("chartLabels").innerHTML = SHEETS.map((s, k) => `<span class="${k === selectedSheet ? "sel" : ""}">${s}</span>`).join("");
+  $("chartLabels").innerHTML = SHEETS.map((s, k) => `<span class="${k === selectedSheet ? "sel" : ""}" title="${sheetLabel(k)}">${chartLabel(s)}</span>`).join("");
   showDetail(selectedSheet);
 }
  
