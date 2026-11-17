@@ -376,7 +376,7 @@
   /* ---------- Column chart ---------- */
   .chart-wrap{position:relative;}
   .chart{
-    display:grid;grid-template-columns:repeat(13,1fr);gap:6px;align-items:end;
+    display:grid;grid-template-columns:repeat(14,1fr);gap:6px;align-items:end;
     height:200px;padding-top:8px;position:relative;
     background-image:linear-gradient(to top, var(--border) 1px, transparent 1px);
     background-size:100% 25%;background-position:0 0;
@@ -394,7 +394,7 @@
   .bar-col:hover .bar{opacity:.85;}
   .bar-col.sel .bar{opacity:1;background:linear-gradient(180deg,#F6D46E,#C9971C);box-shadow:0 0 18px -4px rgba(174,182,178,.7);}
   @keyframes grow{from{transform:scaleY(0);}to{transform:scaleY(1);}}
-  .chart-labels{display:grid;grid-template-columns:repeat(13,1fr);gap:6px;margin-top:8px;}
+  .chart-labels{display:grid;grid-template-columns:repeat(14,1fr);gap:6px;margin-top:8px;}
   .chart-labels span{font-size:10.5px;color:var(--muted);text-align:center;white-space:nowrap;overflow:visible;letter-spacing:-.02em;}
   .chart-labels span.sel{color:var(--text);font-weight:700;}
   .chart-detail{
@@ -515,6 +515,7 @@
   .form-ok{background:rgba(52,211,153,.10);border:1px solid rgba(52,211,153,.4);color:var(--ok-text);border-radius:12px;padding:10px 13px;font-size:13px;font-weight:600;}
   .check{display:flex;align-items:center;gap:9px;font-size:13px;color:var(--text-2);cursor:pointer;user-select:none;}
   .check input{width:18px;height:18px;accent-color:var(--brand);margin:0;cursor:pointer;}
+  .sale-check{margin:2px 0 4px;}
   .modal .combo-panel{position:static;margin-top:6px;box-shadow:none;animation:none;}
   .modal .combo-list{max-height:210px;}
   .combo-new .n{color:var(--brand);font-weight:600;display:flex;align-items:center;gap:8px;}
@@ -1268,6 +1269,8 @@
         <div class="field-hint" id="dateHint"></div>
         <div class="field-err" id="errDate"></div>
       </div>
+
+      <label class="check sale-check"><input type="checkbox" id="billSale"> Sale purchase &middot; save to the Sale tab</label>
 
       <div class="dup-warn" id="dupWarn" hidden></div>
       <div class="form-err" id="formErr" role="alert"></div>
