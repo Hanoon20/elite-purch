@@ -20,7 +20,10 @@ document.addEventListener("touchmove", e => { if(e.touches.length > 1) e.prevent
 // ---------------------------------------------------------------------------
 const SHEET_ID = "1AUdMpLW4znCaB7UQbdjzmzcNUMX32xGLi5At8dCEfxQ";
 const MONTH_SHEETS = ["Jan","Feb","Mar","Apr","May","June","July","Aug","Sep","Oct","Nov","Dec"];
-const SHEETS = ["2025", ...MONTH_SHEETS];
+const SALE_TAB = "Sale";                               // extra tab for sale purchases (same A–D columns as the month tabs)
+const SHEETS = ["2025", ...MONTH_SHEETS, SALE_TAB];
+const SALE_K = SHEETS.length - 1;                      // sheet index of the Sale tab
+const sheetLabel = k => k === 0 ? "2025 archive" : k === SALE_K ? "Sale purchases" : `${MONTH_SHEETS[k-1]} 2026`;
 const HEADER_MARKER = "supplier name";
 const API = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}`;
 const API_OPTS = "valueRenderOption=UNFORMATTED_VALUE&dateTimeRenderOption=SERIAL_NUMBER";
@@ -34,7 +37,7 @@ const SCOPES = "https://www.googleapis.com/auth/spreadsheets.readonly https://ww
 const WRITE_SCOPE = "https://www.googleapis.com/auth/spreadsheets"; // asked for only when adding a bill
 const TOKEN_KEY = "ledger_token_v3";     // {token, exp, scope}
 const EMAIL_KEY = "ledger_user_email";
-const CACHE_KEY = "ledger_cache_v6";     // last loaded data, for instant paint
+const CACHE_KEY = "ledger_cache_v7";     // last loaded data, for instant paint
 const LOCK_MSG_KEY = "ledger_lock_msg";  // reason shown on the sign-in screen after an auto-lock
 const IDLE_LOCK_MINUTES = 30;            // lock and wipe the data after this long without activity
 const LOG_URL = "https://script.google.com/macros/s/AKfycbxOqxaO86nlWEvHxBvUdoSHe79rDbRU6dzoowjlp78Sn3DdcyYiENx-vTqNk1EfqcpW/exec";                      // System Log: paste the Apps Script web app URL here (see system-log/SETUP.md). Empty = System Log is off.
@@ -281,7 +284,7 @@ async function api(url, body){
 const apiGet = url => api(url);
 const rangeFor = name => encodeURIComponent(`'${name}'!A:D`);
  
-// One batched request for all 13 sheets, asking Google for only the cell values
+// One batched request for all 14 sheets, asking Google for only the cell values
 // (no range metadata) to keep the download small. If a sheet tab is missing,
 // batchGet fails as a whole — fall back to per-sheet.
 async function fetchAll(){
@@ -429,7 +432,7 @@ function renderChart(now){
     // Default to the current month's sheet in the current year, else the latest sheet with data
     selectedSheet = now.getFullYear() === 2025 ? 0 : 1 + now.getMonth();
     if(!SHEET_COUNTS[selectedSheet]){
-      for(let k = SHEETS.length - 1; k >= 0; k--) if(SHEET_COUNTS[k]){ selectedSheet = k; break; }
+      for(let k = SALE_K - 1; k >= 0; k--) if(SHEET_COUNTS[k]){ selectedSheet = k; break; }
     }
   }
   $("chart").innerHTML = SHEETS.map((s, k) => {
@@ -443,7 +446,7 @@ function renderChart(now){
  
 function showDetail(k){
   const total = SHEET_SUMS.reduce((a, b) => a + b, 0) || 1;
-  $("detailName").textContent = k === 0 ? "2025 archive" : `${MONTH_SHEETS[k-1]} 2026`;
+  $("detailName").textContent = sheetLabel(k);
   $("detailVal").textContent = fmtMoney(SHEET_SUMS[k] || 0);
   $("detailSub").textContent = `${fmtInt(SHEET_COUNTS[k] || 0)} bills · ${((SHEET_SUMS[k] || 0) / total * 100).toFixed(1)}% of total`;
 }
@@ -814,8 +817,8 @@ function renderSupplierView(){
 // ---------------------------------------------------------------------------
 const sbView = $("sheetsView");
 let sbSheet = -1, sbSort = "recent", sbQuery = "";
-const SB_LABEL = k => k === 0 ? "2025" : MONTH_SHEETS[k - 1];
-const SB_TITLE = k => k === 0 ? "2025 archive" : `${MONTH_LONG[k - 1]} 2026`;
+const SB_LABEL = k => k === 0 ? "2025" : k === SALE_K ? "Sale" : MONTH_SHEETS[k - 1];
+const SB_TITLE = k => k === 0 ? "2025 archive" : k === SALE_K ? "Sale purchases" : `${MONTH_LONG[k - 1]} 2026`;
 const SB_HINTS = {
   recent: "Newest entries first, based on the order bills were added in the sheet (last row = latest).",
   oldest: "Oldest entries first (top rows of the sheet)."
@@ -834,7 +837,7 @@ function sbLastSheet(){
 function sbDefaultSheet(){
   let k = sbCurrentSheet();
   if(!(BY_SHEET[k] && BY_SHEET[k].length)){
-    for(let j = SHEETS.length - 1; j >= 0; j--) if(BY_SHEET[j].length){ k = j; break; }
+    for(let j = SALE_K - 1; j >= 0; j--) if(BY_SHEET[j].length){ k = j; break; }
   }
   return k;
 }
@@ -1194,14 +1197,16 @@ function readBillForm(){
   if(!invoice) errs.Invoice = "Enter the invoice number";
   if(!d) errs.Date = "Pick the bill date";
   else if(d.getFullYear() !== LEDGER_YEAR) errs.Date = `Month tabs are for ${LEDGER_YEAR} — pick a ${LEDGER_YEAR} date`;
-  return { supplier, invoice, amount, d, errs };
+  return { supplier, invoice, amount, d, errs, sale: $("billSale").checked };
 }
  
 // Live feedback while typing: destination tab, "new supplier" tag, duplicate reset
 function onBillEdit(){
   const ms = parseLocalMs($("billDate").value);
   const d = ms === null || isNaN(ms) ? null : new Date(ms);
-  $("billDest").innerHTML = d && d.getFullYear() === LEDGER_YEAR
+  $("billDest").innerHTML = $("billSale").checked
+    ? `Saves to the <b>${SALE_TAB}</b> tab · columns A–D`
+    : d && d.getFullYear() === LEDGER_YEAR
     ? `Saves to the <b>${MONTH_SHEETS[d.getMonth()]}</b> tab · columns A–D`
     : `Saves to the month tab of the bill date`;
   $("dateHint").textContent = d ? d.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" }) : "";
@@ -1238,6 +1243,7 @@ function resetBillForm(keepContext){
   }
   $("billInvoice").value = "";
   $("billAmount").value = "";
+  if(!keepContext) $("billSale").checked = false;
   ["Supplier", "Amount", "Invoice", "Date"].forEach(k => setFieldErr(k, ""));
   dupConfirmedKey = "";
   $("dupWarn").hidden = true;
@@ -1321,7 +1327,7 @@ async function submitBill(e){
     const res = await saveBill(f, force);
     ok = true;
     // Show it on the dashboard immediately — no full reload needed
-    BILLS.push({ s: f.supplier, i: f.invoice, a: f.amount, t: f.d.getTime(), k: 1 + f.d.getMonth() });
+    BILLS.push({ s: f.supplier, i: f.invoice, a: f.amount, t: f.d.getTime(), k: f.sale ? SALE_K : 1 + f.d.getMonth(), r: -1 });
     setData(BILLS.slice());
     store.set(CACHE_KEY, JSON.stringify({ at: Date.now(), email: currentUserEmail, bills: BILLS }));
     const msg = `Saved ${fmtMoney(f.amount)} for ${f.supplier} → ${res.tab} tab, row ${res.row}`;
@@ -1360,7 +1366,7 @@ function billErrorMessage(err){
 // in other columns stay intact. The tab is re-read right before writing so the
 // row is correct even if someone else added a bill meanwhile.
 async function saveBill(f, force){
-  const tab = MONTH_SHEETS[f.d.getMonth()];
+  const tab = f.sale ? SALE_TAB : MONTH_SHEETS[f.d.getMonth()];
   const fmtFields = "sheets(properties(sheetId,gridProperties(rowCount)),data(rowData(values(userEnteredFormat(numberFormat)))))";
   let vals, meta;
   try{
@@ -1452,6 +1458,7 @@ billDialog.addEventListener("close", () => { COMBOS.forEach(c => c.close(false))
   setFieldErr(id.replace("bill", ""), "");
   onBillEdit();
 }));
+$("billSale").addEventListener("change", onBillEdit);
 $("billAmount").addEventListener("blur", () => {
   const a = parseAmount($("billAmount").value);
   if(a > 0) $("billAmount").value = nf2.format(a);   // tidy to 12,500.00 once typed
@@ -1504,7 +1511,7 @@ chartEl.addEventListener("pointermove", e => {
   const k = +col.dataset.k;
   const wrap = chartEl.parentElement.getBoundingClientRect(), r = col.getBoundingClientRect();
   const bar = col.firstElementChild.getBoundingClientRect();
-  tip.innerHTML = `<b>${k === 0 ? "2025 archive" : MONTH_SHEETS[k-1] + " 2026"}</b><span class="num">${fmtMoney(SHEET_SUMS[k])}</span> · ${fmtInt(SHEET_COUNTS[k])} bills`;
+  tip.innerHTML = `<b>${sheetLabel(k)}</b><span class="num">${fmtMoney(SHEET_SUMS[k])}</span> · ${fmtInt(SHEET_COUNTS[k])} bills`;
   const half = tip.offsetWidth / 2;
   const x = Math.min(Math.max(r.left + r.width / 2 - wrap.left, half), wrap.width - half);
   tip.style.left = x + "px";
