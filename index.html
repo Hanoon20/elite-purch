@@ -376,7 +376,7 @@
   /* ---------- Column chart ---------- */
   .chart-wrap{position:relative;}
   .chart{
-    display:grid;grid-template-columns:repeat(14,1fr);gap:6px;align-items:end;
+    display:grid;grid-template-columns:repeat(14,minmax(0,1fr));gap:6px;align-items:end;
     height:200px;padding-top:8px;position:relative;
     background-image:linear-gradient(to top, var(--border) 1px, transparent 1px);
     background-size:100% 25%;background-position:0 0;
@@ -394,8 +394,8 @@
   .bar-col:hover .bar{opacity:.85;}
   .bar-col.sel .bar{opacity:1;background:linear-gradient(180deg,#F6D46E,#C9971C);box-shadow:0 0 18px -4px rgba(174,182,178,.7);}
   @keyframes grow{from{transform:scaleY(0);}to{transform:scaleY(1);}}
-  .chart-labels{display:grid;grid-template-columns:repeat(14,1fr);gap:6px;margin-top:8px;}
-  .chart-labels span{font-size:10.5px;color:var(--muted);text-align:center;white-space:nowrap;overflow:visible;letter-spacing:-.02em;}
+  .chart-labels{display:grid;grid-template-columns:repeat(14,minmax(0,1fr));gap:6px;margin-top:8px;}
+  .chart-labels span{font-size:10.5px;color:var(--muted);text-align:center;white-space:nowrap;overflow:hidden;min-width:0;letter-spacing:-.03em;}
   .chart-labels span.sel{color:var(--text);font-weight:700;}
   .chart-detail{
     display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:6px 14px;
@@ -724,10 +724,22 @@
     #refreshBtn{padding:9px 11px;}
     .brand-title{font-size:13.5px;letter-spacing:.04em;}
   }
+  @media(max-width:560px){
+    .chart{gap:4px;}
+    .chart-labels{gap:4px;}
+    .chart-labels span{font-size:9px;letter-spacing:-.04em;}
+  }
+  @media(max-width:420px){
+    .chart-labels span{font-size:8.5px;}
+  }
+  @media(max-width:350px){
+    .chart{gap:2px;}
+    .chart-labels{gap:2px;}
+    .chart-labels span{font-size:7px;letter-spacing:-.06em;}
+  }
   @media(max-width:380px){
     .chart{gap:3px;}
-    .chart-labels{gap:3px;}
-    .chart-labels span{font-size:9.5px;}
+    .chart-labels{gap:2px;}
     #refreshBtn .lbl{display:none;}
   }
   @media (prefers-reduced-motion: reduce){
