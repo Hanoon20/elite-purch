@@ -1298,9 +1298,9 @@ function cqResultsHtml(list){
   if(!list.length) return '<div class="cq-empty"><b>No cheques found</b><span>Try a wider date range or clear the filters.</span></div>';
   const open = cqPastOpen == null ? !up.length : cqPastOpen;
   let h = "";
-  if(up.length) h += `<div class="cq-sech up"><span class="cq-dot"></span><div><b>Upcoming</b><em>Nearest payment first</em></div><div class="cq-sechv">${rs(sumA(up))}<em>${up.length} cheques</em></div></div>${cqDayCards(byDate(up), 200, t0)}`;
-  if(past.length) h += `<button type="button" class="cq-sech past" data-past aria-expanded="${open}"><span class="cq-dot"></span><div><b>Passed</b><em>Most recent first</em></div><div class="cq-sechv">${rs(sumA(past))}<em>${past.length} cheques</em></div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button>${open ? cqDayCards(byDate(past).reverse(), 200, t0) : ""}`;
-  if(nodate.length) h += `<div class="cq-sech"><span class="cq-dot"></span><div><b>No date</b><em>Fix in the sheet</em></div><div class="cq-sechv">${rs(sumA(nodate))}<em>${nodate.length} cheques</em></div></div><section class="cq-day">${nodate.map(cqRow).join("")}</section>`;
+  if(up.length) h += `<div class="cq-sech up"><span class="cq-dot"></span><div><b>Upcoming</b><em>Nearest payment first</em></div><div class="cq-sechv">${rs(sumA(up))}<em>${up.length} cheque${up.length === 1 ? "" : "s"}</em></div></div>${cqDayCards(byDate(up), 200, t0)}`;
+  if(past.length) h += `<button type="button" class="cq-sech past" data-past aria-expanded="${open}"><span class="cq-dot"></span><div><b>Passed</b><em>Most recent first</em></div><div class="cq-sechv">${rs(sumA(past))}<em>${past.length} cheque${past.length === 1 ? "" : "s"}</em></div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button>${open ? cqDayCards(byDate(past).reverse(), 200, t0) : ""}`;
+  if(nodate.length) h += `<div class="cq-sech"><span class="cq-dot"></span><div><b>No date</b><em>Fix in the sheet</em></div><div class="cq-sechv">${rs(sumA(nodate))}<em>${nodate.length} cheque${nodate.length === 1 ? "" : "s"}</em></div></div><section class="cq-day">${nodate.map(cqRow).join("")}</section>`;
   return h;
 }
 function cqPills(){
@@ -1507,7 +1507,7 @@ function cqOpenBank(bank, from){
     <div class="md-hero bk-${esc(key)}"><span class="bk-art" aria-hidden="true"></span><button type="button" class="md-x md-x-lt" id="cqMdX" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
       <div class="bk-top"><span class="bk-mono">${th.m}</span><span class="bk-name" id="cqMdTitle">${esc(th.n)}</span></div>
       <div class="md-hero-v">${rs(sumA(mon))}</div><div class="md-hero-s">${mon.length} cheques in ${n.toLocaleDateString("en-GB", { month: "long", year: "numeric" })}</div></div>
-    <div class="md-stats"><div><span>Next 7 days</span><b>${rs(sumA(w7))}</b><em>${w7.length} cheques</em></div><div><span>All upcoming</span><b>${rs(sumA(up))}</b><em>${up.length} cheques</em></div><div><span>All time</span><b>${rs(sumA(mine))}</b><em>${mine.length} cheques</em></div></div>
+    <div class="md-stats"><div><span>Next 7 days</span><b>${rs(sumA(w7))}</b><em>${w7.length} cheques</em></div><div><span>All upcoming</span><b>${rs(sumA(up))}</b><em>${up.length} cheque${up.length === 1 ? "" : "s"}</em></div><div><span>All time</span><b>${rs(sumA(mine))}</b><em>${mine.length} cheques</em></div></div>
     <div class="md-sec"><div class="md-sh"><span>Upcoming cheque days</span></div>${days.map(([d, r]) => `<button type="button" class="md-r md-btn" data-day="${d}"><div><b>${fmtDW(d)}</b><em>${relDay(d, t0)} · ${r.length} cheque${r.length > 1 ? "s" : ""}</em></div><strong>${rs(sumA(r))}</strong></button>`).join("") || '<p class="cq-note">No upcoming cheques.</p>'}</div>
     <div class="md-sec"><div class="md-sh"><span>Top suppliers this month</span></div>${top.map(([nm, v]) => `<div class="md-r"><div><b>${esc(nm)}</b></div><strong>${rs(v)}</strong></div>`).join("") || '<p class="cq-note">Nothing this month.</p>'}</div>
     <div class="md-sec"><div class="md-sh"><span>Month by month</span></div>${mk.map(k => { const o = mm.get(k), cur = k === n.getFullYear() * 12 + n.getMonth(); return `<div class="md-m${cur ? " cur" : ""}"><span>${MON_S[k % 12]} ${Math.floor(k / 12)}</span><i><u style="width:${o.v / mx * 100}%"></u></i><b>${short(o.v)}</b></div>`; }).join("")}</div>
@@ -1624,6 +1624,7 @@ chqView.addEventListener("input", e => {
   }
 });
 cqApplyChip("all");
+document.querySelectorAll("[data-year]").forEach(e => { e.textContent = new Date().getFullYear(); });
 // swipe left/right on the calendar to change month
 {
   let x0 = 0, y0 = 0, on = false;
