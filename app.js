@@ -1277,9 +1277,8 @@ const stat = (k, v, s, main) => `<div class="sv-stat${main ? " main" : ""}"><div
 const relDay = (d, t0) => d === t0 ? "Today" : d === t0 + DAY ? "Tomorrow" : d > t0 ? "in " + Math.round((d - t0) / DAY) + " days" : Math.round((t0 - d) / DAY) + " days ago";
 const bankTag = b => `<span class="cq-tag cq-${esc(b.toLowerCase().slice(0, 3))}">${esc(b)}</span>`;
 function cqRow(r){
-  return `<button type="button" class="cq-row" data-rid="${r.id}"><div class="cq-main"><div class="cq-sup">${esc(r.s)}</div>
-    <div class="cq-sub">${bankTag(r.bank)}${r.cash ? '<span class="cq-tag cq-cash">Cash</span>' : ""}<span>${r.no ? "#" + esc(r.no) : "No cheque no."}</span></div></div>
-    <div class="cq-amt">${rs(r.a)}</div><svg class="cq-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button>`;
+  return `<button type="button" class="cq-row" data-rid="${r.id}"><div class="cq-amt">${rs(r.a)}</div><div class="cq-main"><div class="cq-sup">${esc(r.s)}</div>
+    <div class="cq-sub">${bankTag(r.bank)}${r.cash ? '<span class="cq-tag cq-cash">Cash</span>' : ""}<span>${r.no ? "#" + esc(r.no) : "No cheque no."}</span></div></div><svg class="cq-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button>`;
 }
 function cqDayCards(days, limit, t0){
   let shown = 0, html = "";
@@ -1370,11 +1369,12 @@ function cqOverview(){
   const left = month.filter(r => r.d >= t0);
   const bankCards = CHQ.banks.map(b => {
     const mine = recs.filter(r => r.bank === b), m = mine.filter(r => r.d >= ms && r.d < me), u = mine.filter(r => r.d >= t0), w = mine.filter(r => r.d >= t0 && r.d < t0 + 7 * DAY);
+    const mn = n.toLocaleDateString("en-GB", { month: "long" });
     const th = BANK_THEME[b.toLowerCase().slice(0, 3)] || { n: b, m: b.slice(0, 2).toUpperCase() };
     return `<button type="button" class="bk bk-${esc(b.toLowerCase().slice(0, 3))}" data-bank="${esc(b)}"><span class="bk-art" aria-hidden="true"></span>
       <span class="bk-top"><span class="bk-mono">${th.m}</span><span class="bk-name">${esc(th.n)}</span><span class="bk-go">View ›</span></span>
       <span class="bk-amt" data-n="${sumA(m)}">${rs(sumA(m))}</span><span class="bk-sub">${m.length} cheques in ${n.toLocaleDateString("en-GB", { month: "long" })}</span>
-      <span class="bk-foot"><span>Next 7 days<b>${rs(sumA(w))}</b></span><span>All upcoming<b>${rs(sumA(u))}</b></span></span></button>`;
+      <span class="bk-foot"><span>${mn} passed<b>${rs(sumA(m.filter(r => r.d < t0)))}</b></span><span>${mn} upcoming<b>${rs(sumA(m.filter(r => r.d >= t0)))}</b></span></span></button>`;
   }).join("");
   const days = byDate(up).slice(0, 8), dmx = Math.max(...days.map(([, r]) => sumA(r)), 1);
   const sup = new Map(); month.forEach(r => sup.set(r.s, (sup.get(r.s) || 0) + (r.a || 0)));
@@ -1423,7 +1423,7 @@ function cqFilterList(){
 function cqRenderResults(){
   const list = cqFilterList(), t0 = todayMs();
   const up = list.filter(r => r.d != null && r.d >= t0), past = list.filter(r => r.d != null && r.d < t0);
-  $("cqRes").innerHTML = cqPills() + `<div class="cq-sum"><div class="all"><span>Total</span><b>${fmtCompact(sumA(list))}</b><em>${fmtInt(list.length)} cheques</em></div><div class="up"><span>Upcoming</span><b>${fmtCompact(sumA(up))}</b><em>${up.length} cheques</em></div><div class="ps"><span>Passed</span><b>${fmtCompact(sumA(past))}</b><em>${past.length} cheques</em></div></div>` + cqResultsHtml(list);
+  $("cqRes").innerHTML = cqPills() + cqResultsHtml(list);
 }
 
 let cqCal = null;
@@ -1488,7 +1488,7 @@ function cqOpenCheque(id, from){
       <div class="bk-top"><span class="bk-mono">${th.m}</span><span class="bk-name">${esc(th.n)}</span></div>
       <div class="md-hero-v">${rs(r.a)}</div><div class="md-hero-s" id="cqMdTitle">${esc(r.s)}</div><span class="md-pill ${st[1]}">${st[0]}</span></div>
     <div class="md-kvs">${row("Cheque date", r.d != null ? fmtD(r.d) + " · " + relDay(r.d, t0) : "Not set")}${row("Written date", r.w != null ? fmtD(r.w) : "")}${row("Cheque no.", r.no ? "#" + esc(r.no) : "Not set")}${row("Type", esc(r.ty))}${row("Bank", esc(r.bank))}${row("Supplier balance", r.bal != null ? rs(r.bal) : "")}${row("Contact", esc(r.ct))}${row("Sheet", esc(r.tab) + " · row " + r.row)}</div>
-    ${others.length ? `<div class="md-sec"><div class="md-sh"><span>More from this supplier</span></div>${others.map(o => `<button type="button" class="md-r md-btn" data-rid="${o.id}"><div><b>${o.d != null ? fmtD(o.d) : "No date"}</b><em>${esc(o.bank)}${o.no ? " · #" + esc(o.no) : ""}</em></div><strong>${rs(o.a)}</strong></button>`).join("")}</div>` : ""}`;
+    `;
   cqShow(from);
 }
 function cqOpenBank(bank, from){
