@@ -1155,9 +1155,10 @@ function route(){
 // Bottom menus (config-driven: add an entry here for a future menu)
 // ---------------------------------------------------------------------------
 const CHQ_SHEET_ID = "1RTjAwTUZ9wV-Kmnskx4TYJWI10p8u3g6Bc5XQiKWvN8";
-const CHQ_OWNER = "hanoonelite@gmail.com";
+// Who sees the Cheque menu. Empty list = every signed-in user. Add emails to restrict, e.g. ["hanoonelite@gmail.com"].
+const CHQ_ALLOWED = [];
 const CHQ_SKIP = ["chq rgstr", "date summary"];
-const isOwner = () => (currentUserEmail || "").trim().toLowerCase() === CHQ_OWNER;
+const isOwner = () => !CHQ_ALLOWED.length || CHQ_ALLOWED.includes((currentUserEmail || "").trim().toLowerCase());
 const MENUS = [
   { id: "purchase", label: "Purchase", home: "#dashboard", hashes: ["", "#dashboard", "#suppliers", "#sheets", "#log"], show: () => true,
     icon: '<path d="M6.2 8h11.6l-.9 10.4a2.2 2.2 0 0 1-2.2 2H9.3a2.2 2.2 0 0 1-2.2-2L6.2 8z"/><path d="M9 8V7a3 3 0 0 1 6 0v1"/><path d="M9.5 12.5h5"/>' },
@@ -1262,7 +1263,7 @@ async function loadCheques(force){
     CHQ = { recs, blocks, tabs, at: Date.now(), banks: [...new Set(recs.map(r => r.bank))] };
   }catch(e){
     chqErr = e.status === 403 || e.status === 404
-      ? "This Google account can't open the cheque sheet. Share it with " + CHQ_OWNER + " and sign in again."
+      ? "This Google account doesn't have access to the cheque sheet. Ask the owner to share it, then sign in again."
       : "Couldn't load the cheque sheet (" + (e.message || "network") + ").";
   }
   chqLoading = false; renderCheques();
