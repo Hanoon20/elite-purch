@@ -810,6 +810,52 @@
   #lgStats .sv-stats{margin-top:18px;}
   .lg-controls{margin-bottom:16px;}
   .lg-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;}
+
+  /* bottom menu */
+  .bottom-nav{position:fixed;left:0;right:0;bottom:0;z-index:58;display:flex;justify-content:center;gap:6px;padding:8px 12px calc(8px + env(safe-area-inset-bottom));background:var(--panel-solid);border-top:1px solid var(--border-strong);}
+  .bottom-nav[hidden]{display:none;}
+  .bottom-nav button{flex:1 1 0;max-width:200px;display:flex;flex-direction:column;align-items:center;gap:3px;padding:7px 8px;border:0;border-radius:12px;background:transparent;color:var(--muted);font:600 11.5px var(--body, inherit);cursor:pointer;}
+  .bottom-nav button svg{width:22px;height:22px;}
+  .bottom-nav button[aria-current="true"]{color:var(--brand);background:var(--track-bg);}
+  .bottom-nav button:focus-visible{outline:2px solid var(--brand);outline-offset:2px;}
+  body.has-nav{padding-bottom:calc(76px + env(safe-area-inset-bottom));}
+  body.has-nav .fab{bottom:calc(86px + env(safe-area-inset-bottom));}
+  body.on-cheque .fab{display:none !important;}
+  .cq-bar b{white-space:nowrap;}
+  body.has-nav .toast{bottom:calc(152px + env(safe-area-inset-bottom));}
+  body.has-nav .install-banner{bottom:calc(148px + env(safe-area-inset-bottom));}
+  /* cheque */
+  #chequeView{padding-top:14px;}
+  .cq-top2{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;}
+  #cqSeg button{padding:8px 11px;}
+  .cq-upd{margin:8px 2px 0;}
+  .cq-stats{grid-template-columns:repeat(2,1fr);} .cq-stats2{grid-template-columns:repeat(3,1fr);}
+  @media (min-width:720px){.cq-stats{grid-template-columns:repeat(4,1fr);}}
+  .cq-card{margin-top:12px;padding:14px 16px;}
+  .cq-card h3{margin:0 0 8px;font:700 14px var(--display);}
+  .cq-line{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:7px 0;border-top:1px solid var(--border);font-size:13.5px;}
+  .cq-line:first-of-type{border-top:0;} .cq-line b{white-space:nowrap;font-variant-numeric:tabular-nums;}
+  .cq-line em,.cq-dayhead em{font-style:normal;color:var(--muted);font-size:11.5px;margin-left:4px;}
+  .cq-tot{font-weight:700;color:var(--brand);}
+  .cq-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:12px 0;}
+  .cq-form .field:last-child:nth-child(odd){grid-column:1/-1;}
+  @media (min-width:720px){.cq-form{grid-template-columns:repeat(3,minmax(0,1fr));}}
+  #chequeView .chips{margin-top:12px;}
+  .cq-day{margin-top:12px;background:var(--panel);border:1px solid var(--border);border-radius:14px;overflow:hidden;}
+  .cq-dayhead{display:flex;justify-content:space-between;gap:10px;padding:10px 14px;background:var(--track-bg);font-size:13px;font-weight:700;}
+  .cq-row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 14px;border-top:1px solid var(--border);}
+  .cq-main{min-width:0;} .cq-sup{font-size:13.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .cq-sub{display:flex;gap:6px;align-items:center;font-size:11.5px;color:var(--muted);margin-top:3px;flex-wrap:wrap;}
+  .cq-amt{font-weight:700;font-size:13.5px;white-space:nowrap;font-variant-numeric:tabular-nums;}
+  .cq-tag{display:inline-block;padding:1px 7px;border-radius:999px;font-size:10.5px;font-weight:700;background:var(--track-bg);border:1px solid var(--border);color:var(--text);}
+  .cq-ama{color:#7FD8B0;} .cq-com{color:#8DB8F5;} .cq-ndb{color:#F0B27A;} .cq-cash{color:var(--warn-text);}
+  .cq-bars{display:flex;align-items:flex-end;gap:5px;height:150px;padding-top:6px;}
+  .cq-bar{flex:1 1 0;min-width:0;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:3px;font-size:9.5px;color:var(--muted);}
+  .cq-bar i{display:block;width:100%;border-radius:5px 5px 0 0;background:var(--muted);opacity:.55;}
+  .cq-bar.cur i{background:var(--brand);opacity:1;} .cq-bar b{font-size:9px;font-weight:600;color:var(--text);order:-1;}
+  .cq-top{margin-top:2px;} .cq-top i{display:block;height:4px;border-radius:3px;background:var(--brand);opacity:.7;margin-bottom:4px;}
+  .cq-hint{margin:12px 2px 0;line-height:1.5;}
+  .cq-warn{margin-bottom:6px;line-height:1.6;}
   .lg-seg{display:inline-flex;gap:4px;padding:4px;background:var(--track-bg);border:1px solid var(--border);border-radius:13px;}
   .lg-seg button{
     background:none;border:0;color:var(--muted);padding:8px 14px;border-radius:10px;font-family:inherit;
@@ -1135,6 +1181,22 @@
     <svg class="sup-cta-ar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
   </button>
 </main>
+
+<main id="chequeView" hidden>
+  <div class="cq-top2">
+    <div class="lg-seg" role="tablist" aria-label="Cheque view" id="cqSeg">
+      <button type="button" role="tab" data-t="overview" aria-selected="true">Overview</button>
+      <button type="button" role="tab" data-t="finder" aria-selected="false">Finder</button>
+      <button type="button" role="tab" data-t="check" aria-selected="false">Write</button>
+      <button type="button" role="tab" data-t="issues" aria-selected="false">Checks</button>
+    </div>
+    <button id="cqRefresh" class="btn" type="button">Refresh</button>
+  </div>
+  <div class="sec-sub cq-upd" id="cqUpdated"></div>
+  <div id="cqBody"></div>
+</main>
+
+<nav id="bottomNav" class="bottom-nav" aria-label="Main menu" hidden></nav>
 
 <main id="logView" hidden>
   <div class="sv-top">
