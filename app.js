@@ -1281,19 +1281,36 @@ function cqRow(r){
     <div class="cq-sub">${bankTag(r.bank)}${r.cash ? '<span class="cq-tag cq-cash">Cash</span>' : ""}<span>${r.no ? "#" + esc(r.no) : "No cheque no."}</span></div></div>
     <div class="cq-amt">${rs(r.a)}</div></div>`;
 }
-function cqGroups(list, limit){
+function cqDayCards(days, limit, t0){
   let shown = 0, html = "";
-  const t0 = todayMs();
-  for(const [d, rs_] of byDate(list)){
+  for(const [d, rs_] of days){
     if(shown >= limit){ html += `<p class="cq-more">Showing the first ${limit} cheques. Narrow the filters to see the rest.</p>`; break; }
-    html += `<section class="cq-day${d < t0 ? " past" : ""}${d === t0 ? " today" : ""}"><header class="cq-dayhead"><div><b>${fmtDW(d)}</b><em>${relDay(d, t0)}</em></div><div class="cq-daytot">${rs(sumA(rs_))}<em>${rs_.length} cheque${rs_.length > 1 ? "s" : ""}</em></div></header>${rs_.map(cqRow).join("")}</section>`;
-    shown += rs_.length;
+    const l = rs_.slice().sort((x, y) => (y.a || 0) - (x.a || 0));
+    html += `<section class="cq-day${d < t0 ? " past" : ""}${d === t0 ? " today" : ""}"><div class="cq-dayhead"><div><b>${fmtDW(d)}</b><em>${relDay(d, t0)}</em></div><div class="cq-daytot">${rs(sumA(l))}<em>${l.length} cheque${l.length > 1 ? "s" : ""}</em></div></div>${l.map(cqRow).join("")}</section>`;
+    shown += l.length;
   }
-  const nodate = list.filter(r => r.d == null);
-  if(nodate.length) html += `<section class="cq-day"><header class="cq-dayhead"><div><b>No date</b><em>fix in the sheet</em></div><div class="cq-daytot">${rs(sumA(nodate))}</div></header>${nodate.map(cqRow).join("")}</section>`;
-  return html || '<div class="cq-empty"><b>No cheques found</b><span>Try a wider date range or clear the filters.</span></div>';
+  return html;
 }
-
+const cqPastOpenDef = () => false; let cqPastOpen = null;
+function cqResultsHtml(list){
+  const t0 = todayMs(), dated = list.filter(r => r.d != null), nodate = list.filter(r => r.d == null);
+  const up = dated.filter(r => r.d >= t0), past = dated.filter(r => r.d < t0);
+  if(!list.length) return '<div class="cq-empty"><b>No cheques found</b><span>Try a wider date range or clear the filters.</span></div>';
+  const open = cqPastOpen == null ? !up.length : cqPastOpen;
+  let h = "";
+  if(up.length) h += `<div class="cq-sech up"><span class="cq-dot"></span><div><b>Upcoming</b><em>Nearest payment first</em></div><div class="cq-sechv">${rs(sumA(up))}<em>${up.length} cheques</em></div></div>${cqDayCards(byDate(up), 200, t0)}`;
+  if(past.length) h += `<button type="button" class="cq-sech past" data-past aria-expanded="${open}"><span class="cq-dot"></span><div><b>Passed</b><em>Most recent first</em></div><div class="cq-sechv">${rs(sumA(past))}<em>${past.length} cheques</em></div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button>${open ? cqDayCards(byDate(past).reverse(), 200, t0) : ""}`;
+  if(nodate.length) h += `<div class="cq-sech"><span class="cq-dot"></span><div><b>No date</b><em>Fix in the sheet</em></div><div class="cq-sechv">${rs(sumA(nodate))}<em>${nodate.length} cheques</em></div></div><section class="cq-day">${nodate.map(cqRow).join("")}</section>`;
+  return h;
+}
+function cqPills(){
+  const f = cqF, p = [];
+  if(f.from || f.to) p.push(["range", (f.from ? fmtD(isoToMs(f.from)) : "Start") + " → " + (f.to ? fmtD(isoToMs(f.to)) : "End")]);
+  if(f.min !== "" || f.max !== "") p.push(["amt", "Rs. " + (f.min !== "" ? nf0.format(+f.min) : "0") + " – " + (f.max !== "" ? nf0.format(+f.max) : "any")]);
+  if(f.bank) p.push(["bank", f.bank]);
+  if(f.q.trim()) p.push(["q", "“" + f.q.trim() + "”"]);
+  return p.length ? `<div class="cq-pills">${p.map(([k, l]) => `<button type="button" class="cq-pill" data-rm="${k}" aria-label="Remove filter ${esc(l)}">${esc(l)}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M7 7l10 10M17 7L7 17"/></svg></button>`).join("")}</div>` : "";
+}
 const BANK_THEME = { com: { n: "Commercial Bank", m: "CB" }, ama: { n: "Amana Bank", m: "AB" }, ndb: { n: "NDB Bank", m: "NDB" } };
 let cqSel = { 2026: new Date().getFullYear() === 2026 ? new Date().getMonth() : 0, 2027: 0 }, cqYear = new Date().getFullYear() >= 2027 ? 2027 : 2026;
 const MON_S = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -1373,11 +1390,11 @@ function cqOverview(){
   <section class="cq-card"><h3>Top suppliers this month</h3>${top.map(([s, v]) => `<div class="cq-bl static"><span class="cq-bl-l"><b>${esc(s)}</b></span><span class="cq-bl-v">${rs(v)}</span><i style="width:${v / tmx * 100}%"></i></div>`).join("") || '<p class="cq-note">Nothing this month.</p>'}</section>`;
 }
 
-let cqF = { from: "", to: "", min: "", max: "", bank: "", q: "", chip: "upcoming" }, cqOpen = false;
+let cqF = { from: "", to: "", min: "", max: "", bank: "", q: "", chip: "all" }, cqOpen = false;
 const cqActive = () => ["from", "to", "min", "max", "bank"].filter(k => cqF[k] !== "").length;
 function cqFinder(){
   const bankOpts = '<option value="">All banks</option>' + CHQ.banks.map(b => `<option${cqF.bank === b ? " selected" : ""}>${esc(b)}</option>`).join("");
-  const chips = [["today", "Today"], ["week", "This week"], ["month", "This month"], ["next", "Next month"], ["upcoming", "Upcoming"], ["all", "All"]];
+  const chips = [["all", "All"], ["upcoming", "Upcoming"], ["today", "Today"], ["week", "This week"], ["month", "This month"], ["next", "Next month"]];
   const na = cqActive();
   return `<div class="cq-search"><input type="search" id="cqQ" class="cq-in" placeholder="Search supplier or cheque no." value="${esc(cqF.q)}" aria-label="Search">
     <button type="button" class="cq-fbtn${na ? " on" : ""}" id="cqToggle" aria-expanded="${cqOpen}">Filters${na ? `<span>${na}</span>` : ""}</button></div>
@@ -1410,8 +1427,9 @@ function cqFilterList(){
     (!f.bank || r.bank === f.bank) && (!q || r.s.toLowerCase().includes(q) || r.no.toLowerCase().includes(q)));
 }
 function cqRenderResults(){
-  const list = cqFilterList();
-  $("cqRes").innerHTML = `<div class="cq-sum"><div><span>Cheques</span><b>${fmtInt(list.length)}</b></div><div><span>Total</span><b>${rs(sumA(list))}</b></div><div><span>Days</span><b>${fmtInt(new Set(list.map(r => r.d)).size)}</b></div></div>` + cqGroups(list, 250);
+  const list = cqFilterList(), t0 = todayMs();
+  const up = list.filter(r => r.d != null && r.d >= t0), past = list.filter(r => r.d != null && r.d < t0);
+  $("cqRes").innerHTML = cqPills() + `<div class="cq-sum"><div><span>Total</span><b>${fmtCompact(sumA(list))}</b><em>${fmtInt(list.length)} cheques</em></div><div class="up"><span>Upcoming</span><b>${fmtCompact(sumA(up))}</b><em>${up.length} cheques</em></div><div><span>Passed</span><b>${fmtCompact(sumA(past))}</b><em>${past.length} cheques</em></div></div>` + cqResultsHtml(list);
 }
 
 let cqCal = null;
@@ -1556,7 +1574,11 @@ $("cqRefresh").addEventListener("click", () => loadCheques(true));
 chqView.addEventListener("click", e => {
   const t = e.target;
   const c = t.closest("#cqChips .chip");
-  if(c){ cqApplyChip(c.dataset.c); renderCheques(); return; }
+  if(c){ cqApplyChip(c.dataset.c); cqPastOpen = null; renderCheques(); return; }
+  const pst = t.closest("[data-past]");
+  if(pst){ const was = pst.getAttribute("aria-expanded") === "true"; cqPastOpen = !was; cqRenderResults(); return; }
+  const rm = t.closest("[data-rm]");
+  if(rm){ const k = rm.dataset.rm; if(k === "range"){ cqF.from = ""; cqF.to = ""; } else if(k === "amt"){ cqF.min = ""; cqF.max = ""; } else cqF[k] = ""; cqF.chip = (cqF.from || cqF.to) ? "" : "all"; renderCheques(); return; }
   if(t.closest("#cqToggle")){ cqOpen = !cqOpen; renderCheques(); return; }
   if(t.closest("#cqClear")){ cqF = { from: "", to: "", min: "", max: "", bank: "", q: "", chip: "all" }; renderCheques(); return; }
   const yr = t.closest("[data-yr]");
@@ -1586,7 +1608,7 @@ chqView.addEventListener("input", e => {
     cqRenderResults(); return;
   }
 });
-cqApplyChip("upcoming");
+cqApplyChip("all");
 
 
 $("openSupBtn").addEventListener("click", () => { location.hash = "suppliers"; });
