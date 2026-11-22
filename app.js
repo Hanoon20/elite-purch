@@ -1127,6 +1127,8 @@ function route(){
     if(currentUserEmail){ location.replace("#dashboard"); return; }   // other account: never show
   }
   const chq = hash === "#cheques" && isOwner();
+  const mid = chq ? "cheque" : "purchase", menuChanged = lastMenu && lastMenu !== mid;
+  if(chq && (menuChanged || !cqSeen)){ cqPlay = true; cqSeen = true; }
   chqView.hidden = !chq; document.body.classList.toggle("on-cheque", chq);
   dashView.hidden = chq || hash === "#suppliers" || hash === "#sheets" || hash === "#log" || hash === "#cheques";
   svView.hidden = hash !== "#suppliers";
@@ -1140,6 +1142,11 @@ function route(){
   if(hash === "#log") renderLogView();
   if(chq){ renderCheques(); loadCheques(false); }
   applyMenus();
+  if(menuChanged){
+    const el = chq ? chqView : [dashView, svView, sbView, lgView].find(x => x && !x.hidden);
+    if(el){ el.classList.remove("pg-r", "pg-l"); void el.offsetWidth; el.classList.add(chq ? "pg-r" : "pg-l"); setTimeout(() => el.classList.remove("pg-r", "pg-l"), 500); }
+  }
+  lastMenu = mid;
   window.scrollTo(0, 0);
 }
  
@@ -1152,9 +1159,9 @@ const CHQ_SKIP = ["chq rgstr", "date summary"];
 const isOwner = () => (currentUserEmail || "").trim().toLowerCase() === CHQ_OWNER;
 const MENUS = [
   { id: "purchase", label: "Purchase", home: "#dashboard", hashes: ["", "#dashboard", "#suppliers", "#sheets", "#log"], show: () => true,
-    icon: '<path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/>' },
+    icon: '<path d="M6.2 8h11.6l-.9 10.4a2.2 2.2 0 0 1-2.2 2H9.3a2.2 2.2 0 0 1-2.2-2L6.2 8z"/><path d="M9 8V7a3 3 0 0 1 6 0v1"/><path d="M9.5 12.5h5"/>' },
   { id: "cheque", label: "Cheque", home: "#cheques", hashes: ["#cheques"], show: isOwner,
-    icon: '<rect x="3" y="6" width="18" height="12" rx="2"/><path d="M7 10h6M7 14h3"/><path d="M15 15l1.5-3 1.5 3"/>' }
+    icon: '<rect x="2.5" y="5.5" width="19" height="13" rx="2.8"/><path d="M6 9.8h6.5M6 13h3.5"/><path d="M13.6 15.6c.9-2.3 1.7-2.5 2.5-.9.4.8 1 .8 1.8-.7"/><path d="M17 8.6h1.4"/>' }
 ];
 const visibleMenus = () => MENUS.filter(m => m.show());
 function menuOf(hash){ return MENUS.find(m => m.hashes.includes(hash)) || MENUS[0]; }
@@ -1163,8 +1170,14 @@ function applyMenus(){
   const on = vis.length > 1 && document.body.classList.contains("authed");
   nav.hidden = !on;
   document.body.classList.toggle("has-nav", on);
-  const cur = menuOf(location.hash).id;
-  nav.innerHTML = vis.map(m => `<button type="button" data-m="${m.id}" aria-current="${m.id === cur}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${m.icon}</svg><span>${m.label}</span></button>`).join("");
+  const sig = vis.map(m => m.id).join();
+  if(nav.dataset.sig !== sig){
+    nav.dataset.sig = sig;
+    nav.innerHTML = '<i class="nav-ind" aria-hidden="true"></i>' + vis.map(m => `<button type="button" data-m="${m.id}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${m.icon}</svg><span>${m.label}</span></button>`).join("");
+  }
+  const cur = menuOf(location.hash).id, idx = Math.max(0, vis.findIndex(m => m.id === cur));
+  nav.style.setProperty("--n", vis.length); nav.style.setProperty("--i", idx);
+  nav.querySelectorAll("button").forEach(x => x.setAttribute("aria-current", String(x.dataset.m === cur)));
 }
 $("bottomNav").addEventListener("click", e => {
   const b = e.target.closest("button[data-m]"); if(!b) return;
@@ -1280,7 +1293,7 @@ function cqGroups(list, limit){
 }
 
 const BANK_THEME = { com: { n: "Commercial Bank", m: "CB" }, ama: { n: "Amana Bank", m: "AB" }, ndb: { n: "NDB Bank", m: "NDB" } };
-let cqSel = { 2026: new Date().getFullYear() === 2026 ? new Date().getMonth() : 0, 2027: 0 };
+let cqSel = { 2026: new Date().getFullYear() === 2026 ? new Date().getMonth() : 0, 2027: 0 }, cqYear = new Date().getFullYear() >= 2027 ? 2027 : 2026;
 const MON_S = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const MON_L = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 function cqYearData(y){
@@ -1288,15 +1301,46 @@ function cqYearData(y){
   CHQ.recs.forEach(r => { if(r.d == null) return; const d = new Date(r.d); if(d.getFullYear() === y){ v[d.getMonth()] += r.a || 0; c[d.getMonth()]++; } });
   return { v, c };
 }
-function cqYearCard(y){
-  const { v, c } = cqYearData(y), gmax = Math.max(...[2026, 2027].flatMap(Y => cqYearData(Y).v), 1), m = cqSel[y], tot = v.reduce((a, b) => a + b, 0), nowM = new Date();
+function cqDetail(y){
+  const { v, c } = cqYearData(y), m = cqSel[y], tot = v.reduce((a, b) => a + b, 0);
   const mine = CHQ.recs.filter(r => r.d != null && new Date(r.d).getFullYear() === y && new Date(r.d).getMonth() === m);
   const split = CHQ.banks.map(b => ({ b, v: sumA(mine.filter(r => r.bank === b)) })).filter(x => x.v);
-  const bars = v.map((x, i) => `<button type="button" class="cq-bar${i === m ? " sel" : ""}${y === nowM.getFullYear() && i === nowM.getMonth() ? " now" : ""}${x ? "" : " zero"}" data-y="${y}" data-m="${i}" aria-pressed="${i === m}" aria-label="${MON_L[i]} ${y}: ${rs(x)}"><i style="height:${x ? Math.max(5, x / gmax * 100) : 2}%"></i><span>${MON_S[i]}</span></button>`).join("");
-  return `<section class="cq-card cq-year" id="cqY${y}"><div class="cq-yhead"><h3>${y}</h3><span class="cq-ytot">${rs(tot)}<em>${c.reduce((a, b) => a + b, 0)} cheques</em></span></div>
-    <div class="cq-bars">${bars}</div>
-    <div class="cq-detail"><div class="cq-dm">${MON_L[m]} ${y}</div><div class="cq-dv">${rs(v[m])}</div><div class="cq-dc2">${c[m]} cheque${c[m] === 1 ? "" : "s"}${v[m] ? ` · ${Math.round(v[m] / tot * 100)}% of ${y}` : ""}</div>
-    ${split.length ? `<div class="cq-split">${split.map(x => `<span>${bankTag(x.b)}<b>${rs(x.v)}</b></span>`).join("")}</div>` : ""}</div></section>`;
+  return `<div class="cq-dm">${MON_L[m]} ${y}</div><div class="cq-dv" data-n="${v[m]}">${rs(v[m])}</div><div class="cq-dc2">${c[m]} cheque${c[m] === 1 ? "" : "s"}${v[m] ? ` · ${Math.round(v[m] / tot * 100)}% of ${y}` : ""}</div>
+    ${split.length ? `<div class="cq-split">${split.map(x => `<span>${bankTag(x.b)}<b>${rs(x.v)}</b></span>`).join("")}</div>` : ""}`;
+}
+function cqYearCard(){
+  const y = cqYear, { v, c } = cqYearData(y), gmax = Math.max(...[2026, 2027].flatMap(Y => cqYearData(Y).v), 1), m = cqSel[y], tot = v.reduce((a, b) => a + b, 0), nowD = new Date();
+  const bars = v.map((x, i) => `<button type="button" class="cq-bar${i === m ? " sel" : ""}${y === nowD.getFullYear() && i === nowD.getMonth() ? " now" : ""}${x ? "" : " zero"}" style="--k:${i}" data-y="${y}" data-m="${i}" aria-pressed="${i === m}" aria-label="${MON_L[i]} ${y}: ${rs(x)}"><i style="height:${x ? Math.max(5, x / gmax * 100) : 2}%"></i><span>${MON_S[i]}</span></button>`).join("");
+  return `<section class="cq-card cq-year" id="cqYr"><div class="cq-yhead"><div><h3>Cheques by month</h3><p class="cq-note">Tap a bar for the full amount</p></div>
+    <div class="cq-ysw" role="group" aria-label="Year"><i style="transform:translateX(${y === 2027 ? 100 : 0}%)"></i><button type="button" data-yr="2026" aria-pressed="${y === 2026}">2026</button><button type="button" data-yr="2027" aria-pressed="${y === 2027}">2027</button></div></div>
+    <div class="cq-ytotrow"><span>${y} total</span><b data-n="${tot}">${rs(tot)}</b><em>${c.reduce((a, b) => a + b, 0)} cheques</em></div>
+    <div class="cq-bars">${bars}</div><div class="cq-detail">${cqDetail(y)}</div></section>`;
+}
+function cqYearRefresh(replay){
+  const card = $("cqYr"); if(!card) return;
+  const t = document.createElement("div"); t.innerHTML = cqYearCard(); const n = t.firstElementChild;
+  card.querySelector(".cq-ysw i").style.transform = n.querySelector(".cq-ysw i").style.transform;
+  const nb = n.querySelectorAll(".cq-ysw button"); card.querySelectorAll(".cq-ysw button").forEach((b, i) => b.setAttribute("aria-pressed", nb[i].getAttribute("aria-pressed")));
+  card.querySelector(".cq-ytotrow").innerHTML = n.querySelector(".cq-ytotrow").innerHTML;
+  const bars = card.querySelector(".cq-bars"); bars.innerHTML = n.querySelector(".cq-bars").innerHTML;
+  card.querySelector(".cq-detail").innerHTML = n.querySelector(".cq-detail").innerHTML;
+  if(replay){ bars.classList.remove("regrow"); void bars.offsetWidth; bars.classList.add("regrow"); }
+  countUp(card);
+}
+function countUp(root){
+  if(window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  root.querySelectorAll("[data-n]").forEach(el => {
+    const to = +el.dataset.n; if(!to) return;
+    const t0 = performance.now(), D = 850;
+    (function f(t){ const p = Math.min(1, (t - t0) / D), e = 1 - Math.pow(1 - p, 3); el.textContent = p < 1 ? rs(Math.round(to * e)) : rs(to); if(p < 1) requestAnimationFrame(f); })(t0);
+  });
+}
+let cqPlay = false, cqSeen = false, lastMenu = null;
+function cqIntro(){
+  const b = $("cqBody");
+  [...b.children].forEach((el, i) => el.style.setProperty("--i", i));
+  b.classList.remove("anim"); void b.offsetWidth; b.classList.add("anim");
+  countUp(b); clearTimeout(cqIntro.t); cqIntro.t = setTimeout(() => b.classList.remove("anim"), 1800);
 }
 function cqOverview(){
   const { recs } = CHQ, t0 = todayMs(), n = new Date(t0);
@@ -1309,7 +1353,7 @@ function cqOverview(){
     const th = BANK_THEME[b.toLowerCase().slice(0, 3)] || { n: b, m: b.slice(0, 2).toUpperCase() };
     return `<button type="button" class="bk bk-${esc(b.toLowerCase().slice(0, 3))}" data-bank="${esc(b)}"><span class="bk-art" aria-hidden="true"></span>
       <span class="bk-top"><span class="bk-mono">${th.m}</span><span class="bk-name">${esc(th.n)}</span><span class="bk-go">View ›</span></span>
-      <span class="bk-amt">${rs(sumA(m))}</span><span class="bk-sub">${m.length} cheques in ${n.toLocaleDateString("en-GB", { month: "long" })}</span>
+      <span class="bk-amt" data-n="${sumA(m)}">${rs(sumA(m))}</span><span class="bk-sub">${m.length} cheques in ${n.toLocaleDateString("en-GB", { month: "long" })}</span>
       <span class="bk-foot"><span>Next 7 days<b>${rs(sumA(w))}</b></span><span>All upcoming<b>${rs(sumA(u))}</b></span></span></button>`;
   }).join("");
   const days = byDate(up).slice(0, 8), dmx = Math.max(...days.map(([, r]) => sumA(r)), 1);
@@ -1317,13 +1361,13 @@ function cqOverview(){
   const top = [...sup.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6), tmx = top.length ? top[0][1] : 1;
   const mname = n.toLocaleDateString("en-GB", { month: "long", year: "numeric" });
   return `<div class="sv-stats cq-stats">
-    ${stat(mname, rs(sumA(month)), `${month.length} cheques · ${rs(sumA(left))} still to clear`, true)}
+    ${stat(mname, `<span data-n="${sumA(month)}">${rs(sumA(month))}</span>`, `${month.length} cheques · ${rs(sumA(left))} still to clear`, true)}
     ${stat("Today", fmtCompact(sumA(today)), today.length + " cheques")}
     ${stat("Next 7 days", fmtCompact(sumA(w7)), w7.length + " cheques")}
     ${stat("All upcoming", fmtCompact(sumA(up)), up.length + " cheques")}</div>
   <div class="bk-grid">${bankCards}</div>
   <section class="cq-card"><h3>Upcoming cheque days</h3><p class="cq-note">Tap a day to see its cheques</p>${days.map(([d, r]) => `<button type="button" class="cq-bl" data-go="${msToIso(d)}"><span class="cq-bl-l"><b>${fmtDW(d)}</b><em>${relDay(d, t0)} · ${r.length}</em></span><span class="cq-bl-v">${rs(sumA(r))}</span><i style="width:${sumA(r) / dmx * 100}%"></i></button>`).join("") || '<p class="cq-note">No upcoming cheques.</p>'}</section>
-  ${cqYearCard(2026)}${cqYearCard(2027)}
+  ${cqYearCard()}
   <section class="cq-card"><h3>Top suppliers this month</h3>${top.map(([s, v]) => `<div class="cq-bl static"><span class="cq-bl-l"><b>${esc(s)}</b></span><span class="cq-bl-v">${rs(v)}</span><i style="width:${v / tmx * 100}%"></i></div>`).join("") || '<p class="cq-note">Nothing this month.</p>'}</section>`;
 }
 
@@ -1460,8 +1504,9 @@ function renderCheques(){
   else if(chqTab === "finder"){ body.innerHTML = cqFinder(); cqRenderResults(); }
   else if(chqTab === "check"){ body.innerHTML = cqCheck(); cqCheckResults(); }
   else body.innerHTML = cqIssues();
+  if(cqPlay){ cqPlay = false; cqIntro(); }
 }
-$("cqSeg").addEventListener("click", e => { const b = e.target.closest("button"); if(!b) return; chqTab = b.dataset.t; renderCheques(); window.scrollTo(0, 0); });
+$("cqSeg").addEventListener("click", e => { const b = e.target.closest("button"); if(!b) return; chqTab = b.dataset.t; cqPlay = true; renderCheques(); window.scrollTo(0, 0); });
 $("cqRefresh").addEventListener("click", () => loadCheques(true));
 chqView.addEventListener("click", e => {
   const t = e.target;
@@ -1469,8 +1514,10 @@ chqView.addEventListener("click", e => {
   if(c){ cqApplyChip(c.dataset.c); renderCheques(); return; }
   if(t.closest("#cqToggle")){ cqOpen = !cqOpen; renderCheques(); return; }
   if(t.closest("#cqClear")){ cqF = { from: "", to: "", min: "", max: "", bank: "", q: "", chip: "all" }; renderCheques(); return; }
+  const yr = t.closest("[data-yr]");
+  if(yr){ const y = +yr.dataset.yr; if(y !== cqYear){ cqYear = y; cqYearRefresh(true); } return; }
   const bar = t.closest(".cq-bar[data-y]");
-  if(bar){ const y = +bar.dataset.y; cqSel[y] = +bar.dataset.m; $("cqY" + y).outerHTML = cqYearCard(y); return; }
+  if(bar){ cqSel[+bar.dataset.y] = +bar.dataset.m; cqYearRefresh(false); return; }
   const bk = t.closest("[data-bank]");
   if(bk){ cqApplyChip("month"); cqF.bank = bk.dataset.bank; cqF.q = ""; chqTab = "finder"; renderCheques(); window.scrollTo(0, 0); return; }
   const g = t.closest("[data-go]");
