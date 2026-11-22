@@ -42,3 +42,7 @@ Files: `manifest.webmanifest` (name, icon, colours), `sw.js` (service worker: ca
 - **No storage beyond the session:** the token and data live in `sessionStorage` (cleared when the tab or app closes). The service worker never caches Google data.
 - **Can't be embedded:** the page blanks itself if loaded inside another site's frame.
 - Supplier names are HTML-escaped, and values are written to the Sheet as plain values (never formulas).
+
+## Cheque menu
+Bottom menu: Purchase (all old pages) and Cheque. The Cheque menu shows only when the signed-in email is hanoonelite@gmail.com (see CHQ_OWNER in app.js). It reads the Google Sheet CHQ_SHEET_ID (month tabs; "Chq Rgstr" and "Date Summary" are skipped) with the read-only scope. Tabs: Overview, Finder (date/amount/bank/search), Write (check before writing a cheque), Checks (data problems). To add a future menu, add one entry to MENUS in app.js.
+Note: hiding the menu is only a screen rule. Real protection = share the cheque sheet only with hanoonelite@gmail.com.
