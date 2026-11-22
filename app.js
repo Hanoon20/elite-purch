@@ -1240,7 +1240,7 @@ function parseChequeTab(name, rows, out, blocks){
       if(!sup && !no && !amt) return;
       if(!cur){ cur = { tab: name, bank, total: null, sum: 0, n: 0 }; blocks.push(cur); }
       const ty = txt(c(6));
-      const rec = { tab: name, tm, bank, s: sup || "(No name)", no, ty, cash: /cash/i.test(ty),
+      const rec = { id: out.length, ct: txt(c(2)), tab: name, tm, bank, s: sup || "(No name)", no, ty, cash: /cash/i.test(ty),
         d: chqDate(c(7)), w: chqDate(c(4)), a: amt, bal: numOf(c(3)), row: i + 1 };
       out.push(rec); cur.sum += amt || 0; cur.n++;
     });
@@ -1277,16 +1277,17 @@ const stat = (k, v, s, main) => `<div class="sv-stat${main ? " main" : ""}"><div
 const relDay = (d, t0) => d === t0 ? "Today" : d === t0 + DAY ? "Tomorrow" : d > t0 ? "in " + Math.round((d - t0) / DAY) + " days" : Math.round((t0 - d) / DAY) + " days ago";
 const bankTag = b => `<span class="cq-tag cq-${esc(b.toLowerCase().slice(0, 3))}">${esc(b)}</span>`;
 function cqRow(r){
-  return `<div class="cq-row"><div class="cq-main"><div class="cq-sup">${esc(r.s)}</div>
+  return `<button type="button" class="cq-row" data-rid="${r.id}"><div class="cq-main"><div class="cq-sup">${esc(r.s)}</div>
     <div class="cq-sub">${bankTag(r.bank)}${r.cash ? '<span class="cq-tag cq-cash">Cash</span>' : ""}<span>${r.no ? "#" + esc(r.no) : "No cheque no."}</span></div></div>
-    <div class="cq-amt">${rs(r.a)}</div></div>`;
+    <div class="cq-amt">${rs(r.a)}</div><svg class="cq-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button>`;
 }
 function cqDayCards(days, limit, t0){
   let shown = 0, html = "";
   for(const [d, rs_] of days){
     if(shown >= limit){ html += `<p class="cq-more">Showing the first ${limit} cheques. Narrow the filters to see the rest.</p>`; break; }
     const l = rs_.slice().sort((x, y) => (y.a || 0) - (x.a || 0));
-    html += `<section class="cq-day${d < t0 ? " past" : ""}${d === t0 ? " today" : ""}"><div class="cq-dayhead"><div><b>${fmtDW(d)}</b><em>${relDay(d, t0)}</em></div><div class="cq-daytot">${rs(sumA(l))}<em>${l.length} cheque${l.length > 1 ? "s" : ""}</em></div></div>${l.map(cqRow).join("")}</section>`;
+    const dt = new Date(d);
+    html += `<section class="cq-day${d < t0 ? " past" : ""}${d === t0 ? " today" : ""}"><div class="cq-dayhead"><div class="cq-dbadge"><b>${dt.getDate()}</b><span>${MON_S[dt.getMonth()]}</span></div><div class="cq-dinfo"><b>${dt.toLocaleDateString("en-GB", { weekday: "long" })}</b><em>${relDay(d, t0)} · ${l.length} cheque${l.length > 1 ? "s" : ""}</em></div><div class="cq-daytot"><span>Day total</span><b>${rs(sumA(l))}</b></div></div>${l.map(cqRow).join("")}</section>`;
     shown += l.length;
   }
   return html;
@@ -1393,20 +1394,12 @@ function cqOverview(){
 let cqF = { from: "", to: "", min: "", max: "", bank: "", q: "", chip: "all" }, cqOpen = false;
 const cqActive = () => ["from", "to", "min", "max", "bank"].filter(k => cqF[k] !== "").length;
 function cqFinder(){
-  const bankOpts = '<option value="">All banks</option>' + CHQ.banks.map(b => `<option${cqF.bank === b ? " selected" : ""}>${esc(b)}</option>`).join("");
-  const chips = [["all", "All"], ["upcoming", "Upcoming"], ["today", "Today"], ["week", "This week"], ["month", "This month"], ["next", "Next month"]];
-  const na = cqActive();
-  return `<div class="cq-search"><input type="search" id="cqQ" class="cq-in" placeholder="Search supplier or cheque no." value="${esc(cqF.q)}" aria-label="Search">
-    <button type="button" class="cq-fbtn${na ? " on" : ""}" id="cqToggle" aria-expanded="${cqOpen}">Filters${na ? `<span>${na}</span>` : ""}</button></div>
-  <div class="cq-chips" id="cqChips" role="group" aria-label="Quick ranges">${chips.map(([k, l]) => `<button type="button" class="chip${cqF.chip === k ? " active" : ""}" data-c="${k}">${l}</button>`).join("")}</div>
-  <div class="cq-panel" id="cqPanel"${cqOpen ? "" : " hidden"}>
-    <div class="cq-form">
-      <label class="field"><span class="field-label">From date</span><input type="date" id="cqFrom" class="cq-in" value="${cqF.from}"></label>
-      <label class="field"><span class="field-label">To date</span><input type="date" id="cqTo" class="cq-in" value="${cqF.to}"></label>
-      <label class="field"><span class="field-label">Min amount (Rs.)</span><input type="number" inputmode="decimal" id="cqMin" class="cq-in" placeholder="0" value="${cqF.min}"></label>
-      <label class="field"><span class="field-label">Max amount (Rs.)</span><input type="number" inputmode="decimal" id="cqMax" class="cq-in" placeholder="No limit" value="${cqF.max}"></label>
-      <label class="field cq-full"><span class="field-label">Bank</span><select id="cqBank" class="cq-in">${bankOpts}</select></label>
-    </div><button type="button" class="cq-clear" id="cqClear">Clear filters</button></div>
+  const bankOpts = '<option value="">All banks</option>' + CHQ.banks.map(b => `<option value="${esc(b)}"${cqF.bank === b ? " selected" : ""}>${esc(b)}</option>`).join("");
+  const chips = [["all", "All"], ["upcoming", "Upcoming"], ["today", "Today"], ["week", "This week"], ["month", "This month"], ["next", "Next month"], ["custom", "Custom"]];
+  return `<div class="cq-search"><input type="search" id="cqQ" class="cq-in" placeholder="Search supplier / no." value="${esc(cqF.q)}" aria-label="Search">
+    <select id="cqBank" class="cq-in cq-banksel" aria-label="Bank">${bankOpts}</select></div>
+  <div class="cq-chips" id="cqChips" role="group" aria-label="Date range">${chips.map(([k, l]) => `<button type="button" class="chip${cqF.chip === k ? " active" : ""}" data-c="${k}">${l}</button>`).join("")}</div>
+  ${cqF.chip === "custom" ? `<div class="cq-custom"><label class="field"><span class="field-label">From date</span><input type="date" id="cqFrom" class="cq-in" value="${cqF.from}"></label><label class="field"><span class="field-label">To date</span><input type="date" id="cqTo" class="cq-in" value="${cqF.to}"></label></div>` : ""}
   <div id="cqRes"></div>`;
 }
 function cqApplyChip(k){
@@ -1416,6 +1409,7 @@ function cqApplyChip(k){
   else if(k === "month") set(new Date(n.getFullYear(), n.getMonth(), 1).getTime(), new Date(n.getFullYear(), n.getMonth() + 1, 0).getTime());
   else if(k === "next") set(new Date(n.getFullYear(), n.getMonth() + 1, 1).getTime(), new Date(n.getFullYear(), n.getMonth() + 2, 0).getTime());
   else if(k === "upcoming") set(t0, null);
+  else if(k === "custom"){ if(!cqF.from && !cqF.to) set(new Date(n.getFullYear(), n.getMonth(), 1).getTime(), new Date(n.getFullYear(), n.getMonth() + 1, 0).getTime()); }
   else set(null, null);
   cqF.chip = k;
 }
@@ -1429,7 +1423,7 @@ function cqFilterList(){
 function cqRenderResults(){
   const list = cqFilterList(), t0 = todayMs();
   const up = list.filter(r => r.d != null && r.d >= t0), past = list.filter(r => r.d != null && r.d < t0);
-  $("cqRes").innerHTML = cqPills() + `<div class="cq-sum"><div><span>Total</span><b>${fmtCompact(sumA(list))}</b><em>${fmtInt(list.length)} cheques</em></div><div class="up"><span>Upcoming</span><b>${fmtCompact(sumA(up))}</b><em>${up.length} cheques</em></div><div><span>Passed</span><b>${fmtCompact(sumA(past))}</b><em>${past.length} cheques</em></div></div>` + cqResultsHtml(list);
+  $("cqRes").innerHTML = cqPills() + `<div class="cq-sum"><div class="all"><span>Total</span><b>${fmtCompact(sumA(list))}</b><em>${fmtInt(list.length)} cheques</em></div><div class="up"><span>Upcoming</span><b>${fmtCompact(sumA(up))}</b><em>${up.length} cheques</em></div><div class="ps"><span>Passed</span><b>${fmtCompact(sumA(past))}</b><em>${past.length} cheques</em></div></div>` + cqResultsHtml(list);
 }
 
 let cqCal = null;
@@ -1483,6 +1477,20 @@ function cqShow(from){
     requestAnimationFrame(() => { cqModal.classList.add("open"); const x = $("cqMdX"); if(x) x.focus({ preventScroll: true }); });
   }else{ const x = $("cqMdX"); if(x) x.focus({ preventScroll: true }); }
 }
+function cqOpenCheque(id, from){
+  const r = CHQ.recs[id]; if(!r) return;
+  const t0 = todayMs(), key = r.bank.toLowerCase().slice(0, 3), th = BANK_THEME[key] || { n: r.bank, m: r.bank.slice(0, 2).toUpperCase() };
+  const st = r.d == null ? ["No date", "nd"] : r.d >= t0 ? [r.d === t0 ? "Due today" : "Upcoming", "up"] : ["Passed", "ps"];
+  const row = (k, v) => v ? `<div class="md-kv"><span>${k}</span><b>${v}</b></div>` : "";
+  const others = CHQ.recs.filter(x => x.s === r.s && x.id !== r.id).sort((a, b) => { const ua = a.d >= t0, ub = b.d >= t0; return ua !== ub ? (ua ? -1 : 1) : ua ? a.d - b.d : b.d - a.d; }).slice(0, 5);
+  $("cqModalBody").innerHTML = `<i class="md-grab" aria-hidden="true"></i>
+    <div class="md-hero bk-${esc(key)}"><span class="bk-art" aria-hidden="true"></span><button type="button" class="md-x md-x-lt" id="cqMdX" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+      <div class="bk-top"><span class="bk-mono">${th.m}</span><span class="bk-name">${esc(th.n)}</span></div>
+      <div class="md-hero-v">${rs(r.a)}</div><div class="md-hero-s" id="cqMdTitle">${esc(r.s)}</div><span class="md-pill ${st[1]}">${st[0]}</span></div>
+    <div class="md-kvs">${row("Cheque date", r.d != null ? fmtD(r.d) + " · " + relDay(r.d, t0) : "Not set")}${row("Written date", r.w != null ? fmtD(r.w) : "")}${row("Cheque no.", r.no ? "#" + esc(r.no) : "Not set")}${row("Type", esc(r.ty))}${row("Bank", esc(r.bank))}${row("Supplier balance", r.bal != null ? rs(r.bal) : "")}${row("Contact", esc(r.ct))}${row("Sheet", esc(r.tab) + " · row " + r.row)}</div>
+    ${others.length ? `<div class="md-sec"><div class="md-sh"><span>More from this supplier</span></div>${others.map(o => `<button type="button" class="md-r md-btn" data-rid="${o.id}"><div><b>${o.d != null ? fmtD(o.d) : "No date"}</b><em>${esc(o.bank)}${o.no ? " · #" + esc(o.no) : ""}</em></div><strong>${rs(o.a)}</strong></button>`).join("")}</div>` : ""}`;
+  cqShow(from);
+}
 function cqOpenBank(bank, from){
   const key = bank.toLowerCase().slice(0, 3), th = BANK_THEME[key] || { n: bank, m: bank.slice(0, 2).toUpperCase() };
   const t0 = todayMs(), n = new Date(t0), ms = new Date(n.getFullYear(), n.getMonth(), 1).getTime(), me = new Date(n.getFullYear(), n.getMonth() + 1, 1).getTime();
@@ -1505,6 +1513,8 @@ function cqOpenBank(bank, from){
 }
 cqModal.addEventListener("click", e => {
   if(e.target === cqModal || e.target.closest("#cqMdX")){ cqCloseModal(); return; }
+  const rd = e.target.closest("[data-rid]");
+  if(rd){ cqOpenCheque(+rd.dataset.rid); return; }
   const dd = e.target.closest("[data-day]");
   if(dd){ cqOpenDay(+dd.dataset.day); return; }
   const fb = e.target.closest("[data-findbank]");
@@ -1564,7 +1574,7 @@ function renderCheques(){
   if(!CHQ){ body.innerHTML = ""; return; }
   $("cqUpdated").textContent = "Updated " + new Date(CHQ.at).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
   if(chqTab === "overview") body.innerHTML = cqOverview();
-  else if(chqTab === "finder"){ body.innerHTML = cqFinder(); cqRenderResults(); }
+  else if(chqTab === "finder"){ body.innerHTML = cqFinder(); cqRenderResults(); const ac = body.querySelector("#cqChips .chip.active"); if(ac && ac.scrollIntoView) ac.scrollIntoView({ inline: "center", block: "nearest" }); }
   else if(chqTab === "calendar") body.innerHTML = cqCalendar();
   else body.innerHTML = cqIssues();
   if(cqPlay){ cqPlay = false; cqIntro(); }
@@ -1575,6 +1585,8 @@ chqView.addEventListener("click", e => {
   const t = e.target;
   const c = t.closest("#cqChips .chip");
   if(c){ cqApplyChip(c.dataset.c); cqPastOpen = null; renderCheques(); return; }
+  const rw = t.closest("[data-rid]");
+  if(rw){ cqOpenCheque(+rw.dataset.rid, rw); return; }
   const pst = t.closest("[data-past]");
   if(pst){ const was = pst.getAttribute("aria-expanded") === "true"; cqPastOpen = !was; cqRenderResults(); return; }
   const rm = t.closest("[data-rm]");
@@ -1603,7 +1615,6 @@ chqView.addEventListener("input", e => {
   const fm = { cqFrom: "from", cqTo: "to", cqMin: "min", cqMax: "max", cqBank: "bank", cqQ: "q" };
   if(fm[id]){
     cqF[fm[id]] = e.target.value;
-    if(id === "cqFrom" || id === "cqTo"){ cqF.chip = ""; document.querySelectorAll("#cqChips .chip").forEach(x => x.classList.remove("active")); }
     const tg = $("cqToggle"); if(tg){ const na = cqActive(); tg.classList.toggle("on", !!na); tg.innerHTML = "Filters" + (na ? `<span>${na}</span>` : ""); }
     cqRenderResults(); return;
   }
