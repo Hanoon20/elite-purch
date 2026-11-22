@@ -160,7 +160,7 @@ function signOut(){
     try{ google.accounts.oauth2.revoke(accessToken, () => {}); }catch(e){}
   }
   [TOKEN_KEY, EMAIL_KEY, CACHE_KEY, LOG_FLAG_KEY].forEach(store.del);
-  accessToken = null;
+  accessToken = null; CHQ = null;
   location.reload();
 }
  
@@ -168,7 +168,7 @@ function signOut(){
 // then reloads to a clean sign-in screen that explains why.
 function secureLock(message){
   [TOKEN_KEY, CACHE_KEY, LOG_FLAG_KEY].forEach(store.del);
-  accessToken = null;
+  accessToken = null; CHQ = null;
   store.set(LOCK_MSG_KEY, message);
   location.reload();
 }
@@ -203,6 +203,7 @@ async function fetchUserEmail(){
         currentUserEmail = d.email;
         store.set(EMAIL_KEY, d.email);
         showAccount();
+        applyMenus(); route();
       }
     }
   }catch(e){ /* non-fatal */ }
@@ -215,6 +216,7 @@ function showAccount(){
   $("menuAvatarLetter").textContent = (email[0] || "?").toUpperCase();
   $("avatar").classList.add("show");
   document.body.classList.add("authed");
+  if(typeof applyMenus === "function") applyMenus();
 }
  
 function enterDashboard(){
@@ -1121,7 +1123,12 @@ applyLogAccess();
  
 function route(){
   const hash = location.hash;
-  dashView.hidden = hash === "#suppliers" || hash === "#sheets" || hash === "#log";
+  if(hash === "#cheques" && !isOwner()){
+    if(currentUserEmail){ location.replace("#dashboard"); return; }   // other account: never show
+  }
+  const chq = hash === "#cheques" && isOwner();
+  chqView.hidden = !chq; document.body.classList.toggle("on-cheque", chq);
+  dashView.hidden = chq || hash === "#suppliers" || hash === "#sheets" || hash === "#log" || hash === "#cheques";
   svView.hidden = hash !== "#suppliers";
   sbView.hidden = hash !== "#sheets";
   lgView.hidden = hash !== "#log";
@@ -1131,9 +1138,317 @@ function route(){
   if(hash === "#suppliers") renderSupplierView();
   if(hash === "#sheets") renderSheetsView();
   if(hash === "#log") renderLogView();
+  if(chq){ renderCheques(); loadCheques(false); }
+  applyMenus();
   window.scrollTo(0, 0);
 }
  
+// ---------------------------------------------------------------------------
+// Bottom menus (config-driven: add an entry here for a future menu)
+// ---------------------------------------------------------------------------
+const CHQ_SHEET_ID = "1RTjAwTUZ9wV-Kmnskx4TYJWI10p8u3g6Bc5XQiKWvN8";
+const CHQ_OWNER = "hanoonelite@gmail.com";
+const CHQ_SKIP = ["chq rgstr", "date summary"];
+const isOwner = () => (currentUserEmail || "").trim().toLowerCase() === CHQ_OWNER;
+const MENUS = [
+  { id: "purchase", label: "Purchase", home: "#dashboard", hashes: ["", "#dashboard", "#suppliers", "#sheets", "#log"], show: () => true,
+    icon: '<path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/>' },
+  { id: "cheque", label: "Cheque", home: "#cheques", hashes: ["#cheques"], show: isOwner,
+    icon: '<rect x="3" y="6" width="18" height="12" rx="2"/><path d="M7 10h6M7 14h3"/><path d="M15 15l1.5-3 1.5 3"/>' }
+];
+const visibleMenus = () => MENUS.filter(m => m.show());
+function menuOf(hash){ return MENUS.find(m => m.hashes.includes(hash)) || MENUS[0]; }
+function applyMenus(){
+  const nav = $("bottomNav"), vis = visibleMenus();
+  const on = vis.length > 1 && document.body.classList.contains("authed");
+  nav.hidden = !on;
+  document.body.classList.toggle("has-nav", on);
+  const cur = menuOf(location.hash).id;
+  nav.innerHTML = vis.map(m => `<button type="button" data-m="${m.id}" aria-current="${m.id === cur}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${m.icon}</svg><span>${m.label}</span></button>`).join("");
+}
+$("bottomNav").addEventListener("click", e => {
+  const b = e.target.closest("button[data-m]"); if(!b) return;
+  const m = MENUS.find(x => x.id === b.dataset.m);
+  if(m && menuOf(location.hash).id !== m.id) location.hash = m.home.slice(1);
+  else window.scrollTo(0, 0);
+});
+
+// ---------------------------------------------------------------------------
+// Cheque module
+// ---------------------------------------------------------------------------
+let CHQ = null, chqLoading = false, chqTab = "overview", chqErr = "";
+const chqView = $("chequeView");
+const DAY = 86400000;
+const todayMs = () => { const n = new Date(); return new Date(n.getFullYear(), n.getMonth(), n.getDate()).getTime(); };
+const fmtD = ms => ms == null ? "—" : new Date(ms).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+const fmtDW = ms => new Date(ms).toLocaleDateString("en-GB", { weekday: "short", day: "2-digit", month: "short" });
+const isoToMs = s => { if(!s) return null; const [y, m, d] = s.split("-").map(Number); return new Date(y, m - 1, d).getTime(); };
+const msToIso = ms => toLocalISODate(new Date(ms));
+const numOf = v => typeof v === "number" && isFinite(v) ? v : null;
+function chqDate(v){
+  if(typeof v === "number") return serialToMs(v);
+  if(typeof v === "string"){
+    const m = v.trim().match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})$/);
+    if(m){ const d = new Date(+m[3], +m[2] - 1, +m[1]); if(d.getMonth() === +m[2] - 1) return d.getTime(); }
+  }
+  return null;
+}
+const txt = v => v == null ? "" : String(v).trim();
+const MONTHS_L = { jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5, jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11 };
+function tabMonth(name){
+  const m = name.toLowerCase().match(/^([a-z]{3})[a-z]*\s+(\d{4})/);
+  return m && m[1] in MONTHS_L ? { y: +m[2], m: MONTHS_L[m[1]] } : null;
+}
+function bankFromTitle(t){
+  t = t.toLowerCase();
+  if(t.includes("amana")) return "Amana";
+  if(t.includes("ndb")) return "NDB";
+  if(t.includes("commercial") || t.includes("com bank")) return "Commercial";
+  return t.replace(/chqs?/g, "").trim() || "Other";
+}
+
+function parseChequeTab(name, rows, out, blocks){
+  const tm = tabMonth(name);
+  [[0, "Commercial"], [10, "Amana"]].forEach(([off, def]) => {
+    let bank = def, cur = null;
+    rows.forEach((r, i) => {
+      const c = j => r[off + j];
+      const t0 = txt(c(0));
+      if(t0 && /chqs?\b/i.test(t0) && isNaN(+t0)){          // block title row
+        bank = bankFromTitle(t0);
+        cur = { tab: name, bank, total: numOf(c(8)), sum: 0, n: 0 };
+        blocks.push(cur);
+        return;
+      }
+      if(/^supplier/i.test(txt(c(1)))) return;                // header row
+      const sup = txt(c(1)), amt = numOf(c(8)), no = txt(c(5));
+      if(!sup && !no && !amt) return;
+      if(!cur){ cur = { tab: name, bank, total: null, sum: 0, n: 0 }; blocks.push(cur); }
+      const ty = txt(c(6));
+      const rec = { tab: name, tm, bank, s: sup || "(No name)", no, ty, cash: /cash/i.test(ty),
+        d: chqDate(c(7)), w: chqDate(c(4)), a: amt, bal: numOf(c(3)), row: i + 1 };
+      out.push(rec); cur.sum += amt || 0; cur.n++;
+    });
+  });
+}
+
+async function loadCheques(force){
+  if(chqLoading) return;
+  if(CHQ && !force) return;
+  chqLoading = true; chqErr = ""; renderCheques();
+  try{
+    const base = `https://sheets.googleapis.com/v4/spreadsheets/${CHQ_SHEET_ID}`;
+    const meta = await apiGet(`${base}?fields=sheets.properties.title`);
+    const tabs = meta.sheets.map(s => s.properties.title).filter(n => !CHQ_SKIP.includes(n.trim().toLowerCase()) && tabMonth(n));
+    const qs = tabs.map(n => "ranges=" + encodeURIComponent(`'${n}'!A:S`)).join("&");
+    const data = await apiGet(`${base}/values:batchGet?${qs}&${API_OPTS}&fields=valueRanges(values)`);
+    const recs = [], blocks = [];
+    data.valueRanges.forEach((vr, i) => parseChequeTab(tabs[i], vr.values || [], recs, blocks));
+    recs.forEach(r => { r.dd = r.d; });
+    CHQ = { recs, blocks, tabs, at: Date.now(), banks: [...new Set(recs.map(r => r.bank))] };
+  }catch(e){
+    chqErr = e.status === 403 || e.status === 404
+      ? "This Google account can't open the cheque sheet. Share it with " + CHQ_OWNER + " and sign in again."
+      : "Couldn't load the cheque sheet (" + (e.message || "network") + ").";
+  }
+  chqLoading = false; renderCheques();
+}
+
+const sumA = a => a.reduce((s, r) => s + (r.a || 0), 0);
+const byDate = list => { const m = new Map(); list.forEach(r => { if(r.d == null) return; if(!m.has(r.d)) m.set(r.d, []); m.get(r.d).push(r); }); return [...m.entries()].sort((a, b) => a[0] - b[0]); };
+const bankTag = b => `<span class="cq-tag cq-${esc(b.toLowerCase().slice(0, 3))}">${esc(b)}</span>`;
+function cqRow(r){
+  return `<div class="cq-row"><div class="cq-main"><div class="cq-sup">${esc(r.s)}</div>
+    <div class="cq-sub">${bankTag(r.bank)}${r.cash ? '<span class="cq-tag cq-cash">Cash</span>' : ""}<span>${r.no ? "#" + esc(r.no) : "no chq no"}</span></div></div>
+    <div class="cq-amt">${r.a == null ? "—" : fmtMoney(r.a)}</div></div>`;
+}
+function cqGroups(list, limit){
+  let shown = 0, html = "";
+  const groups = byDate(list), t0 = todayMs();
+  for(const [d, rs] of groups){
+    if(shown >= limit){ html += `<p class="empty">Showing first ${limit} cheques — narrow the filters to see the rest.</p>`; break; }
+    const rel = d === t0 ? "Today" : d > t0 ? "in " + Math.round((d - t0) / DAY) + "d" : Math.round((t0 - d) / DAY) + "d ago";
+    html += `<div class="cq-day"><div class="cq-dayhead"><span>${fmtDW(d)} <em>${rel}</em></span><b>${fmtMoney(sumA(rs))}</b></div>${rs.map(cqRow).join("")}</div>`;
+    shown += rs.length;
+  }
+  const nodate = list.filter(r => r.d == null);
+  if(nodate.length) html += `<div class="cq-day"><div class="cq-dayhead"><span>No date</span><b>${fmtMoney(sumA(nodate))}</b></div>${nodate.map(cqRow).join("")}</div>`;
+  return html || '<p class="empty">No cheques match.</p>';
+}
+const stat = (l, v, s) => `<div class="sv-stat"><div class="sv-stat-l">${l}</div><div class="sv-stat-v">${v}</div>${s ? `<div class="sv-stat-s">${s}</div>` : ""}</div>`;
+
+function cqOverview(){
+  const { recs } = CHQ, t0 = todayMs(), n = new Date(t0);
+  const ms = new Date(n.getFullYear(), n.getMonth(), 1).getTime(), me = new Date(n.getFullYear(), n.getMonth() + 1, 1).getTime();
+  const month = recs.filter(r => r.d >= ms && r.d < me);
+  const up = recs.filter(r => r.d >= t0);
+  const w7 = recs.filter(r => r.d >= t0 && r.d < t0 + 7 * DAY);
+  const today = recs.filter(r => r.d === t0);
+  const banks = CHQ.banks.map(b => ({ b, v: sumA(month.filter(r => r.bank === b)), n: month.filter(r => r.bank === b).length })).filter(x => x.n);
+  // monthly bars by cheque date
+  const mm = new Map();
+  recs.forEach(r => { if(r.d == null) return; const d = new Date(r.d), k = d.getFullYear() * 12 + d.getMonth(); mm.set(k, (mm.get(k) || 0) + (r.a || 0)); });
+  const keys = [...mm.keys()].sort((a, b) => a - b), mx = Math.max(...keys.map(k => mm.get(k)), 1);
+  const cur = n.getFullYear() * 12 + n.getMonth();
+  const bars = keys.map(k => `<div class="cq-bar${k === cur ? " cur" : ""}"><i style="height:${Math.max(3, mm.get(k) / mx * 100)}%" title="${fmtMoney(mm.get(k))}"></i><span>${new Date(Math.floor(k / 12), k % 12, 1).toLocaleDateString("en-GB", { month: "short" })}</span><b>${(mm.get(k)/1e6).toFixed(1)}M</b></div>`).join("");
+  // busiest upcoming days
+  const days = byDate(up).slice(0, 10);
+  const sup = new Map(); month.forEach(r => sup.set(r.s, (sup.get(r.s) || 0) + (r.a || 0)));
+  const top = [...sup.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6), tmx = top.length ? top[0][1] : 1;
+  return `<div class="sv-stats cq-stats">
+    ${stat("This month", fmtMoney(sumA(month)), month.length + " cheques")}
+    ${stat("Due today", fmtMoney(sumA(today)), today.length + " cheques")}
+    ${stat("Next 7 days", fmtMoney(sumA(w7)), w7.length + " cheques")}
+    ${stat("All upcoming", fmtMoney(sumA(up)), up.length + " cheques")}</div>
+  <div class="card cq-card"><h3>This month by bank</h3>${banks.map(x => `<div class="cq-line"><span>${bankTag(x.b)} ${x.n} cheques</span><b>${fmtMoney(x.v)}</b></div>`).join("") || '<p class="empty">Nothing this month.</p>'}</div>
+  <div class="card cq-card"><h3>Cheque amount by month</h3><div class="cq-bars">${bars}</div></div>
+  <div class="card cq-card"><h3>Upcoming cheque days</h3>${days.map(([d, rs]) => `<div class="cq-line"><span>${fmtDW(d)} <em>${d === t0 ? "today" : "in " + Math.round((d - t0) / DAY) + "d"} · ${rs.length}</em></span><b>${fmtMoney(sumA(rs))}</b></div>`).join("") || '<p class="empty">No upcoming cheques.</p>'}</div>
+  <div class="card cq-card"><h3>Top suppliers this month</h3>${top.map(([s, v]) => `<div class="cq-top"><div class="cq-line"><span>${esc(s)}</span><b>${fmtMoney(v)}</b></div><i style="width:${v / tmx * 100}%"></i></div>`).join("") || '<p class="empty">Nothing this month.</p>'}</div>`;
+}
+
+let cqF = { from: "", to: "", min: "", max: "", bank: "", q: "", chip: "month" };
+function cqFinder(){
+  const bankOpts = '<option value="">All banks</option>' + CHQ.banks.map(b => `<option${cqF.bank === b ? " selected" : ""}>${esc(b)}</option>`).join("");
+  const chips = [["today", "Today"], ["week", "This week"], ["month", "This month"], ["next", "Next month"], ["upcoming", "Upcoming"], ["all", "All"]];
+  return `<div class="chips" id="cqChips">${chips.map(([k, l]) => `<button type="button" class="chip${cqF.chip === k ? " active" : ""}" data-c="${k}">${l}</button>`).join("")}</div>
+  <div class="cq-form">
+    <label class="field"><span class="field-label">From date</span><input type="date" id="cqFrom" value="${cqF.from}"></label>
+    <label class="field"><span class="field-label">To date</span><input type="date" id="cqTo" value="${cqF.to}"></label>
+    <label class="field"><span class="field-label">Min amount</span><input type="number" inputmode="decimal" id="cqMin" class="input" placeholder="0" value="${cqF.min}"></label>
+    <label class="field"><span class="field-label">Max amount</span><input type="number" inputmode="decimal" id="cqMax" class="input" placeholder="any" value="${cqF.max}"></label>
+    <label class="field"><span class="field-label">Bank</span><select id="cqBank">${bankOpts}</select></label>
+    <label class="field"><span class="field-label">Supplier / chq no</span><input type="search" id="cqQ" class="input" placeholder="Search" value="${esc(cqF.q)}"></label>
+  </div><div id="cqRes"></div>`;
+}
+function cqApplyChip(k){
+  const t0 = todayMs(), n = new Date(t0), set = (a, b) => { cqF.from = a == null ? "" : msToIso(a); cqF.to = b == null ? "" : msToIso(b); };
+  if(k === "today") set(t0, t0);
+  else if(k === "week"){ const s = t0 - ((n.getDay() + 6) % 7) * DAY; set(s, s + 6 * DAY); }
+  else if(k === "month") set(new Date(n.getFullYear(), n.getMonth(), 1).getTime(), new Date(n.getFullYear(), n.getMonth() + 1, 0).getTime());
+  else if(k === "next") set(new Date(n.getFullYear(), n.getMonth() + 1, 1).getTime(), new Date(n.getFullYear(), n.getMonth() + 2, 0).getTime());
+  else if(k === "upcoming") set(t0, null);
+  else set(null, null);
+  cqF.chip = k;
+}
+function cqFilterList(){
+  const f = cqF, from = isoToMs(f.from), to = isoToMs(f.to), min = f.min === "" ? null : +f.min, max = f.max === "" ? null : +f.max, q = f.q.trim().toLowerCase();
+  return CHQ.recs.filter(r =>
+    (from == null || (r.d != null && r.d >= from)) && (to == null || (r.d != null && r.d <= to)) &&
+    (min == null || (r.a || 0) >= min) && (max == null || (r.a || 0) <= max) &&
+    (!f.bank || r.bank === f.bank) && (!q || r.s.toLowerCase().includes(q) || r.no.toLowerCase().includes(q)));
+}
+function cqRenderResults(){
+  const list = cqFilterList();
+  $("cqRes").innerHTML = `<div class="sv-stats cq-stats2">${stat("Cheques", fmtInt(list.length))}${stat("Total", fmtMoney(sumA(list)))}${stat("Days", fmtInt(new Set(list.map(r => r.d)).size))}</div>` + cqGroups(list, 250);
+}
+
+let cqC = { date: "", amt: "", bank: "", sup: "", no: "" };
+function cqCheck(){
+  const sups = [...new Set(CHQ.recs.map(r => r.s))].sort();
+  return `<p class="sec-sub cq-hint">Cheque ezhuthradhukku munnadi — date, amount, bank pottu paaru. Andha naal already evvalavu cheque irukku, supplier-ku munnadi enna pogiduchu nu theriyum.</p>
+  <div class="cq-form">
+    <label class="field"><span class="field-label">Cheque date</span><input type="date" id="ccDate" value="${cqC.date}"></label>
+    <label class="field"><span class="field-label">Amount</span><input type="number" inputmode="decimal" id="ccAmt" class="input" placeholder="0" value="${cqC.amt}"></label>
+    <label class="field"><span class="field-label">Bank</span><select id="ccBank"><option value="">Any bank</option>${CHQ.banks.map(b => `<option${cqC.bank === b ? " selected" : ""}>${esc(b)}</option>`).join("")}</select></label>
+    <label class="field"><span class="field-label">Supplier</span><input id="ccSup" class="input" list="ccSupList" placeholder="Type supplier" value="${esc(cqC.sup)}" autocomplete="off"></label>
+    <label class="field"><span class="field-label">Cheque no (optional)</span><input id="ccNo" class="input" inputmode="numeric" placeholder="e.g. 231400" value="${esc(cqC.no)}"></label>
+  </div><datalist id="ccSupList">${sups.map(s => `<option value="${esc(s)}">`).join("")}</datalist><div id="ccRes"></div>`;
+}
+function cqCheckResults(){
+  const d = isoToMs(cqC.date), amt = +cqC.amt || 0, sup = cqC.sup.trim().toLowerCase(), no = cqC.no.trim();
+  const box = $("ccRes");
+  if(d == null){ box.innerHTML = '<p class="empty">Cheque date select pannu.</p>'; return; }
+  const inBank = r => !cqC.bank || r.bank === cqC.bank;
+  const day = CHQ.recs.filter(r => r.d === d && inBank(r)), dayT = sumA(day);
+  let h = `<div class="card cq-card"><h3>${fmtDW(d)}${cqC.bank ? " · " + esc(cqC.bank) : ""}</h3>
+    <div class="cq-line"><span>Already written</span><b>${day.length} · ${fmtMoney(dayT)}</b></div>
+    <div class="cq-line"><span>This cheque</span><b>${fmtMoney(amt)}</b></div>
+    <div class="cq-line cq-tot"><span>Day total after</span><b>${fmtMoney(dayT + amt)}</b></div>
+    ${CHQ.banks.map(b => { const v = sumA(CHQ.recs.filter(r => r.d === d && r.bank === b)); return v ? `<div class="cq-line"><span>${bankTag(b)}</span><b>${fmtMoney(v)}</b></div>` : ""; }).join("")}</div>`;
+  const warn = [];
+  if(d < todayMs()) warn.push("Idhu past date.");
+  const wd = new Date(d).getDay(); if(wd === 0 || wd === 6) warn.push("Idhu " + (wd === 0 ? "Sunday" : "Saturday") + " — bank open irukkadhu.");
+  if(sup){
+    const same = CHQ.recs.filter(r => r.s.toLowerCase() === sup);
+    const dup = same.filter(r => r.a === amt && amt && Math.abs(r.d - d) <= 31 * DAY);
+    if(dup.length) warn.push("Same supplier, same amount " + fmtD(dup[0].d) + " ku already irukku (#" + (dup[0].no || "-") + ") — duplicate aa nu paaru.");
+    const sd = same.filter(r => r.d === d);
+    if(sd.length) warn.push("Indha supplier-ku andha date-la already " + sd.length + " cheque irukku.");
+    const recent = same.filter(r => r.d != null).sort((a, b) => b.d - a.d).slice(0, 6);
+    h += `<div class="card cq-card"><h3>${esc(cqC.sup.trim())} · recent cheques</h3>${recent.map(r => `<div class="cq-line"><span>${fmtD(r.d)} ${bankTag(r.bank)} <em>${r.no ? "#" + esc(r.no) : ""}</em></span><b>${r.a == null ? "—" : fmtMoney(r.a)}</b></div>`).join("") || '<p class="empty">Indha name-ku cheque illai (new supplier).</p>'}
+      ${same.length ? `<div class="cq-line cq-tot"><span>Total on record</span><b>${fmtMoney(sumA(same))}</b></div>` : ""}</div>`;
+  }
+  if(no){
+    const used = CHQ.recs.filter(r => r.no === no && (!cqC.bank || r.bank === cqC.bank));
+    if(used.length) warn.push("Cheque no " + no + " already use aagiduchu (" + esc(used[0].s) + ", " + fmtD(used[0].d) + ").");
+  }
+  const lastNo = b => { const ns = CHQ.recs.filter(r => r.bank === b && !r.cash && /^\d+$/.test(r.no)).map(r => +r.no); return ns.length ? Math.max(...ns) : null; };
+  const hint = (cqC.bank ? [cqC.bank] : CHQ.banks).map(b => { const l = lastNo(b); return l ? `${esc(b)}: last #${l} → next #${l + 1}` : ""; }).filter(Boolean);
+  if(hint.length) h += `<p class="sec-sub cq-hint">${hint.join(" &nbsp;|&nbsp; ")}</p>`;
+  // nearby days
+  let near = "";
+  for(let i = -3; i <= 3; i++){
+    const x = d + i * DAY, v = sumA(CHQ.recs.filter(r => r.d === x && inBank(r))), c = CHQ.recs.filter(r => r.d === x && inBank(r)).length;
+    near += `<div class="cq-line${i === 0 ? " cq-tot" : ""}"><span>${fmtDW(x)} <em>${c} chq</em></span><b>${fmtMoney(v)}</b></div>`;
+  }
+  h += `<div class="card cq-card"><h3>Nearby days</h3>${near}</div>`;
+  box.innerHTML = (warn.length ? `<div class="form-err cq-warn">${warn.map(w => "• " + w).join("<br>")}</div>` : '<div class="form-ok">Issues onnum illai.</div>') + h;
+}
+
+function cqIssues(){
+  const out = [], { recs, blocks } = CHQ;
+  recs.forEach(r => {
+    if(r.d == null) out.push(["Cheque date missing/invalid", r]);
+    else if(r.tm && (new Date(r.d).getFullYear() !== r.tm.y || new Date(r.d).getMonth() !== r.tm.m)) out.push(["Date not in tab month", r]);
+    if(!r.no && !r.cash) out.push(["Cheque no missing", r]);
+    if(r.a == null) out.push(["Amount missing", r]);
+  });
+  const seen = new Map();
+  recs.filter(r => r.no && !r.cash).forEach(r => { const k = r.bank + "|" + r.no; if(!seen.has(k)) seen.set(k, []); seen.get(k).push(r); });
+  seen.forEach(a => { if(a.length > 1) a.forEach(r => out.push(["Duplicate cheque no", r])); });
+  const bad = blocks.filter(b => b.total != null && Math.abs(b.total - b.sum) > 1);
+  const groups = {}; out.forEach(([k, r]) => (groups[k] = groups[k] || []).push(r));
+  let h = `<p class="sec-sub cq-hint">${fmtInt(recs.length)} rows checked across ${CHQ.tabs.length} month tabs.</p>`;
+  h += bad.length ? `<div class="card cq-card"><h3>Tab total ≠ sum of rows</h3>${bad.map(b => `<div class="cq-line"><span>${esc(b.tab)} ${bankTag(b.bank)}</span><b>${fmtMoney(b.total)} vs ${fmtMoney(b.sum)}</b></div>`).join("")}</div>` : '<div class="form-ok">Ella tab totals-um row sum-oda match aagudhu.</div>';
+  const names = Object.keys(groups);
+  if(!names.length) h += '<div class="form-ok" style="margin-top:10px">Row-level issues onnum illai.</div>';
+  names.forEach(k => {
+    h += `<div class="card cq-card"><h3>${k} · ${groups[k].length}</h3>${groups[k].slice(0, 40).map(r => `<div class="cq-line"><span>${esc(r.s)} <em>${esc(r.tab)} · row ${r.row} · ${bankTag(r.bank)}</em></span><b>${r.a == null ? "—" : fmtMoney(r.a)}</b></div>`).join("")}${groups[k].length > 40 ? `<p class="empty">+${groups[k].length - 40} more</p>` : ""}</div>`;
+  });
+  return h;
+}
+
+function renderCheques(){
+  const body = $("cqBody");
+  document.querySelectorAll("#cqSeg button").forEach(x => x.setAttribute("aria-selected", String(x.dataset.t === chqTab)));
+  if(chqLoading && !CHQ){ body.innerHTML = '<p class="empty">Loading cheque sheet…</p>'; return; }
+  if(chqErr && !CHQ){ body.innerHTML = `<div class="form-err">${esc(chqErr)}</div>`; return; }
+  if(!CHQ){ body.innerHTML = ""; return; }
+  $("cqUpdated").textContent = "Updated " + new Date(CHQ.at).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+  if(chqTab === "overview") body.innerHTML = cqOverview();
+  else if(chqTab === "finder"){ body.innerHTML = cqFinder(); cqRenderResults(); }
+  else if(chqTab === "check"){ body.innerHTML = cqCheck(); cqCheckResults(); }
+  else body.innerHTML = cqIssues();
+}
+$("cqSeg").addEventListener("click", e => { const b = e.target.closest("button"); if(!b) return; chqTab = b.dataset.t; renderCheques(); });
+$("cqRefresh").addEventListener("click", () => loadCheques(true));
+chqView.addEventListener("click", e => {
+  const c = e.target.closest("#cqChips .chip"); if(!c) return;
+  cqApplyChip(c.dataset.c); renderCheques();
+});
+chqView.addEventListener("input", e => {
+  const id = e.target.id;
+  const fm = { cqFrom: "from", cqTo: "to", cqMin: "min", cqMax: "max", cqBank: "bank", cqQ: "q" };
+  if(fm[id]){
+    cqF[fm[id]] = e.target.value;
+    if(id === "cqFrom" || id === "cqTo"){ cqF.chip = ""; document.querySelectorAll("#cqChips .chip").forEach(x => x.classList.remove("active")); }
+    cqRenderResults(); return;
+  }
+  const cm = { ccDate: "date", ccAmt: "amt", ccBank: "bank", ccSup: "sup", ccNo: "no" };
+  if(cm[id]){ cqC[cm[id]] = e.target.value; cqCheckResults(); }
+});
+cqApplyChip("month");
+
 $("openSupBtn").addEventListener("click", () => { location.hash = "suppliers"; });
 $("svBack").addEventListener("click", () => { location.hash = "dashboard"; });
 window.addEventListener("hashchange", route);
