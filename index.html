@@ -560,8 +560,11 @@
   .toast::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--green);flex-shrink:0;}
   .toast.error::before{background:var(--rose);}
 
-  footer{max-width:1080px;margin:32px auto 0;padding:0 16px;text-align:center;color:var(--muted);font-size:11.5px;}
-  footer svg{width:12px;height:12px;vertical-align:-2px;margin-right:4px;}
+  footer.site-foot{max-width:1080px;margin:36px auto 0;padding:22px 16px 26px;text-align:center;color:var(--muted);font-size:11.5px;border-top:1px solid var(--border);position:relative;}
+  footer.site-foot::before{content:"";position:absolute;left:50%;top:-1px;width:64px;height:2px;transform:translateX(-50%);border-radius:2px;background:linear-gradient(90deg,transparent,var(--brand),transparent);}
+  .sf-brand{display:inline-flex;align-items:center;gap:8px;color:var(--text);font:700 13px var(--display);letter-spacing:.02em;}
+  .sf-mark{display:grid;place-items:center;width:24px;height:24px;border-radius:8px;background:rgba(226,180,58,.16);border:1px solid rgba(226,180,58,.4);color:var(--brand);} .sf-mark svg{width:13px;height:13px;}
+  .sf-line{margin-top:6px;font-size:11.5px;} .sf-copy{margin-top:8px;font-size:11px;letter-spacing:.02em;color:var(--text-2);font-weight:500;}
 
 
 
@@ -784,6 +787,7 @@
   #googleSignInBtn:hover{box-shadow:0 10px 26px -8px rgba(255,255,255,.5);}
   #googleSignInBtn:active{transform:scale(.98);}
   #googleSignInBtn:disabled{opacity:.6;cursor:default;}
+  .lock-copy{margin-top:8px;text-align:center;font-size:11px;color:var(--muted);letter-spacing:.02em;}
   .lock-foot{margin-top:22px;font-size:11.5px;color:var(--muted);display:flex;align-items:center;justify-content:center;gap:6px;}
 
   /* ---------- Theme button ---------- */
@@ -1185,6 +1189,7 @@
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
       Secured by Google Sign-In
     </div>
+    <div class="lock-copy">&copy; <span data-year>2026</span> Hanoon. All rights reserved.</div>
   </div>
 </div>
 
@@ -1567,9 +1572,10 @@
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-<footer>
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
-  Elite Colour World &middot; Purchase Ledger &middot; secured with Google Sign-In
+<footer class="site-foot">
+  <div class="sf-brand"><span class="sf-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></span><b>Elite Colour World</b></div>
+  <div class="sf-line">Purchase Ledger &middot; Secured with Google Sign-In</div>
+  <div class="sf-copy">&copy; <span data-year>2026</span> Hanoon. All rights reserved.</div>
 </footer>
 
 </body>
