@@ -1624,6 +1624,18 @@ chqView.addEventListener("input", e => {
   }
 });
 cqApplyChip("all");
+// swipe left/right on the calendar to change month
+{
+  let x0 = 0, y0 = 0, on = false;
+  chqView.addEventListener("touchstart", e => { const g = e.target.closest(".cal-card"); on = !!g; if(g){ x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; } }, { passive: true });
+  chqView.addEventListener("touchend", e => {
+    if(!on) return; on = false;
+    const dx = e.changedTouches[0].clientX - x0, dy = e.changedTouches[0].clientY - y0;
+    if(Math.abs(dx) < 45 || Math.abs(dx) < Math.abs(dy) * 1.4) return;
+    const btn = chqView.querySelector(`[data-cal="${dx < 0 ? 1 : -1}"]`);
+    if(btn && !btn.disabled) cqCalMove(dx < 0 ? 1 : -1);
+  }, { passive: true });
+}
 
 
 $("openSupBtn").addEventListener("click", () => { location.hash = "suppliers"; });
