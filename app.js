@@ -1123,6 +1123,7 @@ applyLogAccess();
  
 function route(){
   const hash = location.hash;
+  if(typeof cqCloseModal === "function") cqCloseModal();
   if(hash === "#cheques" && !isOwner()){
     if(currentUserEmail){ location.replace("#dashboard"); return; }   // other account: never show
   }
@@ -1412,63 +1413,56 @@ function cqRenderResults(){
   $("cqRes").innerHTML = `<div class="cq-sum"><div><span>Cheques</span><b>${fmtInt(list.length)}</b></div><div><span>Total</span><b>${rs(sumA(list))}</b></div><div><span>Days</span><b>${fmtInt(new Set(list.map(r => r.d)).size)}</b></div></div>` + cqGroups(list, 250);
 }
 
-let cqC = { date: "", amt: "", bank: "", sup: "", no: "" };
-function cqCheck(){
-  const sups = [...new Set(CHQ.recs.map(r => r.s))].sort();
-  return `<p class="cq-note cq-lead">Check a cheque before you write it: the day's load, duplicates and the supplier's history.</p>
-  <div class="cq-form">
-    <label class="field"><span class="field-label">Cheque date</span><input type="date" id="ccDate" class="cq-in" value="${cqC.date}"></label>
-    <label class="field"><span class="field-label">Bank</span><select id="ccBank" class="cq-in"><option value="">Any bank</option>${CHQ.banks.map(b => `<option${cqC.bank === b ? " selected" : ""}>${esc(b)}</option>`).join("")}</select></label>
-    <label class="field cq-full"><span class="field-label">Amount (Rs.)</span><input type="number" inputmode="decimal" id="ccAmt" class="cq-in cq-big" placeholder="0" value="${cqC.amt}"></label>
-    <label class="field"><span class="field-label">Supplier</span><input id="ccSup" class="cq-in" list="ccSupList" placeholder="Type to search" value="${esc(cqC.sup)}" autocomplete="off"></label>
-    <label class="field"><span class="field-label">Cheque no. <i>(optional)</i></span><input id="ccNo" class="cq-in" inputmode="numeric" placeholder="e.g. 231400" value="${esc(cqC.no)}"></label>
-  </div><datalist id="ccSupList">${sups.map(s => `<option value="${esc(s)}">`).join("")}</datalist><div id="ccRes"></div>`;
+let cqCal = null;
+function cqCalendar(){
+  const n0 = new Date(); if(!cqCal) cqCal = { y: n0.getFullYear(), m: n0.getMonth() };
+  const { y, m } = cqCal, t0 = todayMs();
+  const days = new Date(y, m + 1, 0).getDate(), lead = (new Date(y, m, 1).getDay() + 6) % 7;
+  const byD = new Map();
+  CHQ.recs.forEach(r => { if(r.d == null) return; const d = new Date(r.d); if(d.getFullYear() === y && d.getMonth() === m){ const o = byD.get(d.getDate()) || { v: 0, c: 0 }; o.v += r.a || 0; o.c++; byD.set(d.getDate(), o); } });
+  const vals = [...byD.entries()], mx = Math.max(1, ...vals.map(([, o]) => o.v)), tot = vals.reduce((a, [, o]) => a + o.v, 0), cnt = vals.reduce((a, [, o]) => a + o.c, 0);
+  const busy = vals.sort((a, b) => b[1].v - a[1].v)[0];
+  const keys = CHQ.recs.filter(r => r.d != null).map(r => { const d = new Date(r.d); return d.getFullYear() * 12 + d.getMonth(); }), kmin = Math.min(...keys), kmax = Math.max(...keys), k = y * 12 + m;
+  let cells = "<i></i>".repeat(lead);
+  for(let d = 1; d <= days; d++){
+    const ts = new Date(y, m, d).getTime(), o = byD.get(d), wd = new Date(ts).getDay();
+    cells += `<button type="button" class="cal-d${o ? " has" : ""}${ts === t0 ? " today" : ""}${wd === 0 || wd === 6 ? " wk" : ""}" style="--h:${o ? (0.14 + 0.86 * o.v / mx).toFixed(2) : 0};--k:${d}" ${o ? `data-day="${ts}" aria-label="${fmtDW(ts)}: ${rs(o.v)}, ${o.c} cheques"` : "disabled"}><b>${d}</b><em>${o ? short(o.v) : ""}</em></button>`;
+  }
+  return `<section class="cq-card cal-card"><div class="cal-head"><button type="button" class="cal-nav" data-cal="-1" aria-label="Previous month"${k <= kmin ? " disabled" : ""}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></button>
+    <div class="cal-title"><b>${MON_L[m]}</b><span>${y}</span></div>
+    <button type="button" class="cal-nav" data-cal="1" aria-label="Next month"${k >= kmax ? " disabled" : ""}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button></div>
+    <div class="cal-sum"><div><span>Month total</span><b>${rs(tot)}</b></div><div><span>Cheques</span><b>${cnt}</b></div><div><span>Busiest day</span><b>${busy ? busy[0] + " " + MON_S[m] : "–"}</b></div></div>
+    <div class="cal-wk">${["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map(x => `<span>${x}</span>`).join("")}</div>
+    <div class="cal-grid" id="calGrid">${cells}</div>
+    <div class="cal-foot"><button type="button" class="cal-today" data-cal="today">Today</button><span>Tap a date for bank &amp; supplier details</span></div></section>`;
 }
-function cqCheckResults(){
-  const d = isoToMs(cqC.date), amt = +cqC.amt || 0, sup = cqC.sup.trim().toLowerCase(), no = cqC.no.trim(), box = $("ccRes"), t0 = todayMs();
-  if(d == null){ box.innerHTML = '<div class="cq-empty"><b>Pick a cheque date</b><span>The day total, nearby days and warnings will appear here.</span></div>'; return; }
-  const inBank = r => !cqC.bank || r.bank === cqC.bank;
-  const at = x => CHQ.recs.filter(r => r.d === x && inBank(r));
-  const day = at(d), dayT = sumA(day);
-  const maxDay = Math.max(...byDate(CHQ.recs.filter(r => r.d >= t0 && inBank(r))).map(([, r]) => sumA(r)), dayT + amt, 1);
-  const bad = [], warn = [];
-  if(sup){
-    const same = CHQ.recs.filter(r => r.s.toLowerCase() === sup);
-    const dup = same.filter(r => r.a === amt && amt && r.d != null && Math.abs(r.d - d) <= 31 * DAY);
-    if(dup.length) bad.push(`Same supplier and amount already exists for ${fmtD(dup[0].d)} (#${esc(dup[0].no || "-")}). Possible duplicate.`);
-    const sd = same.filter(r => r.d === d);
-    if(sd.length) warn.push(`This supplier already has ${sd.length} cheque${sd.length > 1 ? "s" : ""} on this date.`);
-  }
-  if(no){
-    const used = CHQ.recs.filter(r => r.no === no && !r.cash && inBank(r));
-    if(used.length) bad.push(`Cheque no. ${esc(no)} is already used (${esc(used[0].s)}, ${fmtD(used[0].d)}).`);
-  }
-  if(d < t0) warn.push("This date is in the past.");
-  const wd = new Date(d).getDay(); if(wd === 0 || wd === 6) warn.push(`This date is a ${wd === 0 ? "Sunday" : "Saturday"}. Banks are closed.`);
-  const status = bad.length ? `<div class="cq-alert bad" role="alert"><b>Check before writing</b>${bad.concat(warn).map(w => `<span>${w}</span>`).join("")}</div>`
-    : warn.length ? `<div class="cq-alert warn"><b>Heads up</b>${warn.map(w => `<span>${w}</span>`).join("")}</div>`
-    : '<div class="cq-alert ok"><b>All clear</b><span>No duplicates or date problems found.</span></div>';
-  let h = status + `<section class="cq-card"><h3>${fmtDW(d)} <em>${relDay(d, t0)}</em></h3>
-    <div class="cq-load"><i style="width:${Math.min(100, dayT / maxDay * 100)}%"></i><u style="width:${Math.min(100 - Math.min(100, dayT / maxDay * 100), amt / maxDay * 100)}%"></u></div>
-    <div class="cq-line"><span>Already written (${day.length})</span><b>${rs(dayT)}</b></div>
-    <div class="cq-line"><span>This cheque</span><b>${rs(amt)}</b></div>
-    <div class="cq-line cq-tot"><span>Day total after</span><b>${rs(dayT + amt)}</b></div>
-    ${CHQ.banks.map(b => { const v = sumA(CHQ.recs.filter(r => r.d === d && r.bank === b)); return v ? `<div class="cq-line sub"><span>${bankTag(b)}</span><b>${rs(v)}</b></div>` : ""; }).join("")}</section>`;
-  let strip = "";
-  for(let i = -3; i <= 3; i++){
-    const x = d + i * DAY, v = sumA(at(x)), c = at(x).length;
-    strip += `<button type="button" class="cq-dc${i === 0 ? " sel" : ""}" data-pick="${msToIso(x)}"><span>${new Date(x).toLocaleDateString("en-GB", { weekday: "short" })}</span><b>${new Date(x).getDate()}</b><em>${c ? short(v) : "–"}</em></button>`;
-  }
-  h += `<section class="cq-card"><h3>Nearby days</h3><p class="cq-note">Tap a day to move the cheque date</p><div class="cq-strip">${strip}</div></section>`;
-  if(sup){
-    const same = CHQ.recs.filter(r => r.s.toLowerCase() === sup), recent = same.filter(r => r.d != null).sort((a, b) => b.d - a.d).slice(0, 6);
-    h += `<section class="cq-card"><h3>${esc(cqC.sup.trim())}</h3>${recent.map(r => `<div class="cq-line"><span>${fmtD(r.d)} ${bankTag(r.bank)}<em>${r.no ? "#" + esc(r.no) : ""}</em></span><b>${rs(r.a)}</b></div>`).join("") || '<p class="cq-note">No cheques on record for this name (new supplier?).</p>'}${same.length ? `<div class="cq-line cq-tot"><span>Total on record (${same.length})</span><b>${rs(sumA(same))}</b></div>` : ""}</section>`;
-  }
-  const lastNo = b => { const ns = CHQ.recs.filter(r => r.bank === b && !r.cash && /^\d+$/.test(r.no)).map(r => +r.no); return ns.length ? Math.max(...ns) : null; };
-  const nx = (cqC.bank ? [cqC.bank] : CHQ.banks).map(b => { const l = lastNo(b); return l ? `<div class="cq-line"><span>${bankTag(b)}</span><b>last #${l} → next #${l + 1}</b></div>` : ""; }).join("");
-  if(nx) h += `<section class="cq-card"><h3>Cheque numbers</h3>${nx}</section>`;
-  box.innerHTML = h;
+function cqCalMove(step){
+  const n = new Date(), c = step === "today" ? { y: n.getFullYear(), m: n.getMonth() } : (() => { const d = new Date(cqCal.y, cqCal.m + step, 1); return { y: d.getFullYear(), m: d.getMonth() }; })();
+  const dir = (c.y * 12 + c.m) >= (cqCal.y * 12 + cqCal.m) ? "pg-r" : "pg-l"; cqCal = c;
+  const card = $("cqBody").querySelector(".cal-card"); if(!card) return;
+  const t = document.createElement("div"); t.innerHTML = cqCalendar(); card.replaceWith(t.firstElementChild);
+  const g = $("calGrid"); g.classList.add(dir); setTimeout(() => g.classList.remove(dir), 450);
 }
+const cqModal = $("cqModal");
+function cqCloseModal(){ if(cqModal.hidden) return; cqModal.classList.remove("open"); document.body.classList.remove("modal-open"); setTimeout(() => { cqModal.hidden = true; }, 220); if(cqModal._from) try{ cqModal._from.focus(); }catch(e){} }
+function cqOpenDay(ts, from){
+  const list = CHQ.recs.filter(r => r.d === ts), tot = sumA(list), t0 = todayMs();
+  const groups = CHQ.banks.map(b => ({ b, l: list.filter(r => r.bank === b).sort((x, y) => (y.a || 0) - (x.a || 0)) })).filter(g => g.l.length);
+  $("cqModalBody").innerHTML = `<div class="md-h"><div><div class="md-date" id="cqMdTitle">${new Date(ts).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</div><div class="md-rel">${relDay(ts, t0)}</div></div>
+    <button type="button" class="md-x" id="cqMdX" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+    <div class="md-tot"><span>Total cheques</span><b>${rs(tot)}</b><em>${list.length} cheque${list.length > 1 ? "s" : ""} · ${list.length ? new Set(list.map(r => r.s)).size : 0} suppliers</em></div>
+    <div class="md-banks">${groups.map(g => `<div class="md-bt bk-${esc(g.b.toLowerCase().slice(0, 3))}"><span>${esc((BANK_THEME[g.b.toLowerCase().slice(0, 3)] || { n: g.b }).n)}</span><b>${rs(sumA(g.l))}</b><em>${g.l.length} cheque${g.l.length > 1 ? "s" : ""}</em></div>`).join("")}</div>
+    <div class="md-list">${groups.map(g => `<div class="md-sec"><div class="md-sh">${bankTag(g.b)}<span>${g.l.length} · ${rs(sumA(g.l))}</span></div>${g.l.map(r => `<div class="md-r"><div><b>${esc(r.s)}</b><em>${r.cash ? "Cash" : r.no ? "#" + esc(r.no) : "No cheque no."}</em></div><strong>${rs(r.a)}</strong></div>`).join("")}</div>`).join("")}</div>
+    <button type="button" class="md-find" data-find="${msToIso(ts)}">Open in Finder</button>`;
+  cqModal._from = from || null; cqModal.hidden = false; document.body.classList.add("modal-open");
+  requestAnimationFrame(() => { cqModal.classList.add("open"); $("cqMdX").focus({ preventScroll: true }); });
+}
+cqModal.addEventListener("click", e => {
+  if(e.target === cqModal || e.target.closest("#cqMdX")){ cqCloseModal(); return; }
+  const f = e.target.closest("[data-find]");
+  if(f){ cqF = { from: f.dataset.find, to: f.dataset.find, min: "", max: "", bank: "", q: "", chip: "" }; chqTab = "finder"; cqCloseModal(); renderCheques(); window.scrollTo(0, 0); }
+});
+document.addEventListener("keydown", e => { if(e.key === "Escape") cqCloseModal(); });
 
 function cqIssues(){
   const out = [], { recs, blocks } = CHQ;
@@ -1502,7 +1496,7 @@ function renderCheques(){
   $("cqUpdated").textContent = "Updated " + new Date(CHQ.at).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
   if(chqTab === "overview") body.innerHTML = cqOverview();
   else if(chqTab === "finder"){ body.innerHTML = cqFinder(); cqRenderResults(); }
-  else if(chqTab === "check"){ body.innerHTML = cqCheck(); cqCheckResults(); }
+  else if(chqTab === "calendar") body.innerHTML = cqCalendar();
   else body.innerHTML = cqIssues();
   if(cqPlay){ cqPlay = false; cqIntro(); }
 }
@@ -1522,8 +1516,10 @@ chqView.addEventListener("click", e => {
   if(bk){ cqApplyChip("month"); cqF.bank = bk.dataset.bank; cqF.q = ""; chqTab = "finder"; renderCheques(); window.scrollTo(0, 0); return; }
   const g = t.closest("[data-go]");
   if(g){ cqF = { from: g.dataset.go, to: g.dataset.go, min: "", max: "", bank: "", q: "", chip: "" }; chqTab = "finder"; renderCheques(); window.scrollTo(0, 0); return; }
-  const p = t.closest("[data-pick]");
-  if(p){ cqC.date = p.dataset.pick; renderCheques(); }
+  const cn = t.closest("[data-cal]");
+  if(cn){ cqCalMove(cn.dataset.cal === "today" ? "today" : +cn.dataset.cal); return; }
+  const dy = t.closest("[data-day]");
+  if(dy){ cqOpenDay(+dy.dataset.day, dy); return; }
 });
 chqView.addEventListener("input", e => {
   const id = e.target.id;
@@ -1534,8 +1530,6 @@ chqView.addEventListener("input", e => {
     const tg = $("cqToggle"); if(tg){ const na = cqActive(); tg.classList.toggle("on", !!na); tg.innerHTML = "Filters" + (na ? `<span>${na}</span>` : ""); }
     cqRenderResults(); return;
   }
-  const cm = { ccDate: "date", ccAmt: "amt", ccBank: "bank", ccSup: "sup", ccNo: "no" };
-  if(cm[id]){ cqC[cm[id]] = e.target.value; cqCheckResults(); }
 });
 cqApplyChip("upcoming");
 
