@@ -1279,18 +1279,39 @@ function cqGroups(list, limit){
   return html || '<div class="cq-empty"><b>No cheques found</b><span>Try a wider date range or clear the filters.</span></div>';
 }
 
+const BANK_THEME = { com: { n: "Commercial Bank", m: "CB" }, ama: { n: "Amana Bank", m: "AB" }, ndb: { n: "NDB Bank", m: "NDB" } };
+let cqSel = { 2026: new Date().getFullYear() === 2026 ? new Date().getMonth() : 0, 2027: 0 };
+const MON_S = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const MON_L = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+function cqYearData(y){
+  const v = Array(12).fill(0), c = Array(12).fill(0);
+  CHQ.recs.forEach(r => { if(r.d == null) return; const d = new Date(r.d); if(d.getFullYear() === y){ v[d.getMonth()] += r.a || 0; c[d.getMonth()]++; } });
+  return { v, c };
+}
+function cqYearCard(y){
+  const { v, c } = cqYearData(y), gmax = Math.max(...[2026, 2027].flatMap(Y => cqYearData(Y).v), 1), m = cqSel[y], tot = v.reduce((a, b) => a + b, 0), nowM = new Date();
+  const mine = CHQ.recs.filter(r => r.d != null && new Date(r.d).getFullYear() === y && new Date(r.d).getMonth() === m);
+  const split = CHQ.banks.map(b => ({ b, v: sumA(mine.filter(r => r.bank === b)) })).filter(x => x.v);
+  const bars = v.map((x, i) => `<button type="button" class="cq-bar${i === m ? " sel" : ""}${y === nowM.getFullYear() && i === nowM.getMonth() ? " now" : ""}${x ? "" : " zero"}" data-y="${y}" data-m="${i}" aria-pressed="${i === m}" aria-label="${MON_L[i]} ${y}: ${rs(x)}"><i style="height:${x ? Math.max(5, x / gmax * 100) : 2}%"></i><span>${MON_S[i]}</span></button>`).join("");
+  return `<section class="cq-card cq-year" id="cqY${y}"><div class="cq-yhead"><h3>${y}</h3><span class="cq-ytot">${rs(tot)}<em>${c.reduce((a, b) => a + b, 0)} cheques</em></span></div>
+    <div class="cq-bars">${bars}</div>
+    <div class="cq-detail"><div class="cq-dm">${MON_L[m]} ${y}</div><div class="cq-dv">${rs(v[m])}</div><div class="cq-dc2">${c[m]} cheque${c[m] === 1 ? "" : "s"}${v[m] ? ` · ${Math.round(v[m] / tot * 100)}% of ${y}` : ""}</div>
+    ${split.length ? `<div class="cq-split">${split.map(x => `<span>${bankTag(x.b)}<b>${rs(x.v)}</b></span>`).join("")}</div>` : ""}</div></section>`;
+}
 function cqOverview(){
   const { recs } = CHQ, t0 = todayMs(), n = new Date(t0);
   const ms = new Date(n.getFullYear(), n.getMonth(), 1).getTime(), me = new Date(n.getFullYear(), n.getMonth() + 1, 1).getTime();
   const month = recs.filter(r => r.d >= ms && r.d < me), up = recs.filter(r => r.d >= t0);
   const w7 = recs.filter(r => r.d >= t0 && r.d < t0 + 7 * DAY), today = recs.filter(r => r.d === t0);
   const left = month.filter(r => r.d >= t0);
-  const banks = CHQ.banks.map(b => ({ b, v: sumA(month.filter(r => r.bank === b)), n: month.filter(r => r.bank === b).length })).filter(x => x.n);
-  const bmax = Math.max(...banks.map(x => x.v), 1);
-  const mm = new Map();
-  recs.forEach(r => { if(r.d == null) return; const d = new Date(r.d), k = d.getFullYear() * 12 + d.getMonth(); mm.set(k, (mm.get(k) || 0) + (r.a || 0)); });
-  const keys = [...mm.keys()].sort((a, b) => a - b), mx = Math.max(...keys.map(k => mm.get(k)), 1), cur = n.getFullYear() * 12 + n.getMonth();
-  const bars = keys.map(k => `<div class="cq-bar${k === cur ? " cur" : ""}"><b>${(mm.get(k) / 1e6).toFixed(1)}</b><i style="height:${Math.max(4, mm.get(k) / mx * 100)}%"></i><span>${new Date(Math.floor(k / 12), k % 12, 1).toLocaleDateString("en-GB", { month: "short" })}</span></div>`).join("");
+  const bankCards = CHQ.banks.map(b => {
+    const mine = recs.filter(r => r.bank === b), m = mine.filter(r => r.d >= ms && r.d < me), u = mine.filter(r => r.d >= t0), w = mine.filter(r => r.d >= t0 && r.d < t0 + 7 * DAY);
+    const th = BANK_THEME[b.toLowerCase().slice(0, 3)] || { n: b, m: b.slice(0, 2).toUpperCase() };
+    return `<button type="button" class="bk bk-${esc(b.toLowerCase().slice(0, 3))}" data-bank="${esc(b)}"><span class="bk-art" aria-hidden="true"></span>
+      <span class="bk-top"><span class="bk-mono">${th.m}</span><span class="bk-name">${esc(th.n)}</span><span class="bk-go">View ›</span></span>
+      <span class="bk-amt">${rs(sumA(m))}</span><span class="bk-sub">${m.length} cheques in ${n.toLocaleDateString("en-GB", { month: "long" })}</span>
+      <span class="bk-foot"><span>Next 7 days<b>${rs(sumA(w))}</b></span><span>All upcoming<b>${rs(sumA(u))}</b></span></span></button>`;
+  }).join("");
   const days = byDate(up).slice(0, 8), dmx = Math.max(...days.map(([, r]) => sumA(r)), 1);
   const sup = new Map(); month.forEach(r => sup.set(r.s, (sup.get(r.s) || 0) + (r.a || 0)));
   const top = [...sup.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6), tmx = top.length ? top[0][1] : 1;
@@ -1300,9 +1321,9 @@ function cqOverview(){
     ${stat("Today", fmtCompact(sumA(today)), today.length + " cheques")}
     ${stat("Next 7 days", fmtCompact(sumA(w7)), w7.length + " cheques")}
     ${stat("All upcoming", fmtCompact(sumA(up)), up.length + " cheques")}</div>
+  <div class="bk-grid">${bankCards}</div>
   <section class="cq-card"><h3>Upcoming cheque days</h3><p class="cq-note">Tap a day to see its cheques</p>${days.map(([d, r]) => `<button type="button" class="cq-bl" data-go="${msToIso(d)}"><span class="cq-bl-l"><b>${fmtDW(d)}</b><em>${relDay(d, t0)} · ${r.length}</em></span><span class="cq-bl-v">${rs(sumA(r))}</span><i style="width:${sumA(r) / dmx * 100}%"></i></button>`).join("") || '<p class="cq-note">No upcoming cheques.</p>'}</section>
-  <section class="cq-card"><h3>${n.toLocaleDateString("en-GB", { month: "long" })} by bank</h3>${banks.map(x => `<div class="cq-bl static"><span class="cq-bl-l"><b>${bankTag(x.b)}</b><em>${x.n} cheques</em></span><span class="cq-bl-v">${rs(x.v)}</span><i style="width:${x.v / bmax * 100}%"></i></div>`).join("") || '<p class="cq-note">Nothing this month.</p>'}</section>
-  <section class="cq-card"><h3>Cheque amount by month</h3><p class="cq-note">In Rs. millions, by cheque date</p><div class="cq-bars">${bars}</div></section>
+  ${cqYearCard(2026)}${cqYearCard(2027)}
   <section class="cq-card"><h3>Top suppliers this month</h3>${top.map(([s, v]) => `<div class="cq-bl static"><span class="cq-bl-l"><b>${esc(s)}</b></span><span class="cq-bl-v">${rs(v)}</span><i style="width:${v / tmx * 100}%"></i></div>`).join("") || '<p class="cq-note">Nothing this month.</p>'}</section>`;
 }
 
@@ -1448,6 +1469,10 @@ chqView.addEventListener("click", e => {
   if(c){ cqApplyChip(c.dataset.c); renderCheques(); return; }
   if(t.closest("#cqToggle")){ cqOpen = !cqOpen; renderCheques(); return; }
   if(t.closest("#cqClear")){ cqF = { from: "", to: "", min: "", max: "", bank: "", q: "", chip: "all" }; renderCheques(); return; }
+  const bar = t.closest(".cq-bar[data-y]");
+  if(bar){ const y = +bar.dataset.y; cqSel[y] = +bar.dataset.m; $("cqY" + y).outerHTML = cqYearCard(y); return; }
+  const bk = t.closest("[data-bank]");
+  if(bk){ cqApplyChip("month"); cqF.bank = bk.dataset.bank; cqF.q = ""; chqTab = "finder"; renderCheques(); window.scrollTo(0, 0); return; }
   const g = t.closest("[data-go]");
   if(g){ cqF = { from: g.dataset.go, to: g.dataset.go, min: "", max: "", bank: "", q: "", chip: "" }; chqTab = "finder"; renderCheques(); window.scrollTo(0, 0); return; }
   const p = t.closest("[data-pick]");
