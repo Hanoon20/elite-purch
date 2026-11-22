@@ -18,7 +18,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <!-- Non-render-blocking font load (falls back to the system stack instantly) -->
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;800&family=Poppins:wght@400;500;600;700&display=swap" media="print" id="fontCss">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;800&family=Poppins:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" media="print" id="fontCss">
 <script id="gsiScript" src="https://accounts.google.com/gsi/client" async></script>
 <script src="app.js" defer></script>
 
@@ -882,10 +882,34 @@
   .cq-ama{color:#2FA877;} .cq-com{color:#4C8FE0;} .cq-ndb{color:#D98A3D;} .cq-cash{color:var(--warn-text);}
   .cq-more{margin:14px 0;text-align:center;font-size:12.5px;color:var(--muted);}
   .cq-empty{margin-top:14px;padding:30px 18px;text-align:center;border:1px dashed var(--border-strong);border-radius:16px;} .cq-empty b{display:block;font-size:14.5px;} .cq-empty span{display:block;margin-top:5px;font-size:12.5px;color:var(--muted);}
-  .cq-bars{display:flex;align-items:flex-end;gap:4px;height:150px;padding-top:4px;}
-  .cq-bar{flex:1 1 0;min-width:0;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:4px;font-size:9.5px;color:var(--muted);}
-  .cq-bar i{display:block;width:100%;border-radius:5px 5px 2px 2px;background:var(--muted);opacity:.4;} .cq-bar.cur i{background:var(--brand);opacity:1;}
-  .cq-bar b{font-size:9px;font-weight:600;color:var(--text-2);order:-1;white-space:nowrap;} .cq-bar.cur span{color:var(--brand);font-weight:700;}
+  #chequeView{--num:"Space Grotesk","Poppins",-apple-system,"Segoe UI",sans-serif;}
+  #chequeView .cq-amt,#chequeView .cq-bl-v,#chequeView .cq-daytot,#chequeView .cq-sum b,#chequeView .sv-stat .v,#chequeView .cq-line b,#chequeView .cq-big,#chequeView .cq-dc b,#chequeView .cq-dc em,#chequeView .cq-ytot,#chequeView .cq-dv,#chequeView .bk-amt,#chequeView .bk-foot b{font-family:var(--num);font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1;letter-spacing:-.01em;}
+  .cq-yhead{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;} .cq-yhead h3{font-size:20px;}
+  .cq-ytot{text-align:right;font-weight:700;font-size:15px;} .cq-ytot em{display:block;font-style:normal;font-weight:500;font-size:11.5px;color:var(--muted);margin-top:2px;font-family:inherit;}
+  .cq-bars{display:grid;grid-template-columns:repeat(12,1fr);gap:4px;height:160px;margin-top:14px;padding:0;align-items:end;}
+  .cq-bar{appearance:none;-webkit-appearance:none;position:relative;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:6px;padding:0;border:0;background:transparent;cursor:pointer;min-width:0;-webkit-tap-highlight-color:transparent;}
+  .cq-bar i{display:block;width:100%;border-radius:7px 7px 3px 3px;background:linear-gradient(180deg,rgba(148,151,142,.75),rgba(148,151,142,.32));transition:filter .15s ease,transform .15s ease;}
+  .cq-bar span{font-size:9.5px;font-weight:600;color:var(--muted);height:14px;}
+  .cq-bar.zero i{opacity:.4;}
+  .cq-bar:hover i{filter:brightness(1.15);}
+  .cq-bar.now span{color:var(--text-2);text-decoration:underline;text-underline-offset:3px;}
+  .cq-bar.sel i{background:linear-gradient(180deg,#F3D26B,#C9971C);box-shadow:0 6px 16px -6px rgba(226,180,58,.7);transform:scaleX(1.06);}
+  .cq-bar.sel span{color:var(--brand);font-weight:800;}
+  .cq-bar:focus-visible{outline:2px solid var(--brand);outline-offset:3px;border-radius:6px;}
+  .cq-detail{margin-top:14px;padding:13px 15px;border-radius:14px;background:var(--track-bg);border:1px solid var(--border);}
+  .cq-dm{font-size:12px;font-weight:600;color:var(--muted);} .cq-dv{margin-top:3px;font-size:26px;font-weight:700;line-height:1.1;color:var(--text);} .cq-dc2{margin-top:4px;font-size:12px;color:var(--muted);}
+  .cq-split{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);} .cq-split span{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;} .cq-split b{font-family:var(--num);}
+  .bk-grid{display:grid;grid-template-columns:1fr;gap:12px;margin-top:14px;} @media (min-width:720px){.bk-grid{grid-template-columns:repeat(3,1fr);}}
+  .bk{position:relative;overflow:hidden;display:flex;flex-direction:column;gap:2px;width:100%;padding:16px;border:0;border-radius:18px;color:#fff;text-align:left;font-family:inherit;cursor:pointer;isolation:isolate;box-shadow:0 14px 28px -16px rgba(0,0,0,.55);transition:transform .15s ease,box-shadow .15s ease;}
+  .bk:active{transform:scale(.985);} .bk:focus-visible{outline:2px solid var(--brand);outline-offset:3px;}
+  .bk-art{position:absolute;inset:0;z-index:-1;background:radial-gradient(circle at 105% -10%,var(--bk-a) 0,transparent 46%),radial-gradient(circle at -10% 120%,rgba(255,255,255,.14) 0,transparent 42%),repeating-linear-gradient(135deg,rgba(255,255,255,.05) 0 2px,transparent 2px 14px);}
+  .bk-com{background:linear-gradient(135deg,#08336F,#1456B8);--bk-a:rgba(255,199,44,.55);}
+  .bk-ama{background:linear-gradient(135deg,#064B33,#119062);--bk-a:rgba(232,199,102,.5);}
+  .bk-ndb{background:linear-gradient(135deg,#0A2250,#2457A6);--bk-a:rgba(124,198,67,.5);}
+  .bk-top{display:flex;align-items:center;gap:10px;} .bk-mono{display:grid;place-items:center;min-width:34px;height:34px;padding:0 6px;border-radius:10px;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.28);font:800 12px var(--display);letter-spacing:.02em;}
+  .bk-name{font:700 14px var(--display);flex:1;} .bk-go{font-size:12px;font-weight:600;opacity:.8;}
+  .bk-amt{margin-top:14px;font-size:clamp(24px,7.4vw,30px);font-weight:700;line-height:1.1;} .bk-sub{font-size:12px;opacity:.82;margin-top:3px;}
+  .bk-foot{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px;padding-top:11px;border-top:1px solid rgba(255,255,255,.22);font-size:11px;opacity:.95;} .bk-foot span{display:flex;flex-direction:column;gap:2px;min-width:0;} .bk-foot b{font-size:14px;font-weight:600;white-space:nowrap;}
   .cq-alert{display:flex;flex-direction:column;gap:4px;margin-top:14px;padding:13px 15px;border-radius:14px;border:1px solid;font-size:13px;line-height:1.45;} .cq-alert b{font-size:14px;}
   .cq-alert.ok{background:rgba(52,211,153,.10);border-color:rgba(52,211,153,.4);color:var(--ok-text);}
   .cq-alert.warn{background:rgba(226,180,58,.12);border-color:rgba(226,180,58,.45);color:var(--warn-text);}
