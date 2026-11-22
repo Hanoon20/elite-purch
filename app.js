@@ -1459,13 +1459,14 @@ function cqCalMove(step){
 const cqModal = $("cqModal");
 function cqCloseModal(){ if(cqModal.hidden) return; const sh = cqModal.querySelector(".cq-sheet"); sh.style.transition = ""; sh.style.transform = ""; cqModal.classList.remove("open"); document.body.classList.remove("modal-open"); setTimeout(() => { cqModal.hidden = true; }, 220); if(cqModal._from) try{ cqModal._from.focus(); }catch(e){} }
 function cqOpenDay(ts, from){
+  cqModal._cur = { t: "day", ts };
   const list = CHQ.recs.filter(r => r.d === ts), tot = sumA(list), t0 = todayMs();
   const groups = CHQ.banks.map(b => ({ b, l: list.filter(r => r.bank === b).sort((x, y) => (y.a || 0) - (x.a || 0)) })).filter(g => g.l.length);
   $("cqModalBody").innerHTML = `<i class="md-grab" aria-hidden="true"></i><div class="md-h"><div><div class="md-date" id="cqMdTitle">${new Date(ts).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</div><div class="md-rel">${relDay(ts, t0)}</div></div>
     <button type="button" class="md-x" id="cqMdX" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
     <div class="md-tot"><span>Total cheques</span><b>${rs(tot)}</b><em>${list.length} cheque${list.length > 1 ? "s" : ""} · ${list.length ? new Set(list.map(r => r.s)).size : 0} suppliers</em></div>
     <div class="md-banks">${groups.map(g => `<div class="md-bt bk-${esc(g.b.toLowerCase().slice(0, 3))}"><span>${esc((BANK_THEME[g.b.toLowerCase().slice(0, 3)] || { n: g.b }).n)}</span><b>${rs(sumA(g.l))}</b><em>${g.l.length} cheque${g.l.length > 1 ? "s" : ""}</em></div>`).join("")}</div>
-    <div class="md-list">${groups.map(g => `<div class="md-sec"><div class="md-sh">${bankTag(g.b)}<span>${g.l.length} · ${rs(sumA(g.l))}</span></div>${g.l.map(r => `<div class="md-r"><div><b>${esc(r.s)}</b><em>${r.cash ? "Cash" : r.no ? "#" + esc(r.no) : "No cheque no."}</em></div><strong>${rs(r.a)}</strong></div>`).join("")}</div>`).join("")}</div>
+    <div class="md-list">${groups.map(g => `<div class="md-sec"><div class="md-sh">${bankTag(g.b)}<span>${g.l.length} · ${rs(sumA(g.l))}</span></div>${g.l.map(r => `<button type="button" class="md-r md-btn" data-rid="${r.id}"><div><b>${esc(r.s)}</b><em>${r.cash ? "Cash" : r.no ? "#" + esc(r.no) : "No cheque no."}</em></div><strong>${rs(r.a)}</strong><svg class="cq-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button>`).join("")}</div>`).join("")}</div>
     <button type="button" class="md-find" data-find="${msToIso(ts)}">Open in Finder</button>`;
   cqShow(from);
 }
@@ -1477,21 +1478,23 @@ function cqShow(from){
     requestAnimationFrame(() => { cqModal.classList.add("open"); const x = $("cqMdX"); if(x) x.focus({ preventScroll: true }); });
   }else{ const x = $("cqMdX"); if(x) x.focus({ preventScroll: true }); }
 }
-function cqOpenCheque(id, from){
+function cqOpenCheque(id, from, prev){
   const r = CHQ.recs[id]; if(!r) return;
+  cqModal._cur = { t: "chq", id };
   const t0 = todayMs(), key = r.bank.toLowerCase().slice(0, 3), th = BANK_THEME[key] || { n: r.bank, m: r.bank.slice(0, 2).toUpperCase() };
   const st = r.d == null ? ["No date", "nd"] : r.d >= t0 ? [r.d === t0 ? "Due today" : "Upcoming", "up"] : ["Passed", "ps"];
   const row = (k, v) => v ? `<div class="md-kv"><span>${k}</span><b>${v}</b></div>` : "";
   const others = CHQ.recs.filter(x => x.s === r.s && x.id !== r.id).sort((a, b) => { const ua = a.d >= t0, ub = b.d >= t0; return ua !== ub ? (ua ? -1 : 1) : ua ? a.d - b.d : b.d - a.d; }).slice(0, 5);
-  $("cqModalBody").innerHTML = `<i class="md-grab" aria-hidden="true"></i>
+  $("cqModalBody").innerHTML = `<i class="md-grab" aria-hidden="true"></i>${prev ? `<button type="button" class="md-back" data-back><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>Back</button>` : ""}
     <div class="md-hero bk-${esc(key)}"><span class="bk-art" aria-hidden="true"></span><button type="button" class="md-x md-x-lt" id="cqMdX" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
       <div class="bk-top"><span class="bk-mono">${th.m}</span><span class="bk-name">${esc(th.n)}</span></div>
       <div class="md-hero-v">${rs(r.a)}</div><div class="md-hero-s" id="cqMdTitle">${esc(r.s)}</div><span class="md-pill ${st[1]}">${st[0]}</span></div>
     <div class="md-kvs">${row("Cheque date", r.d != null ? fmtD(r.d) + " · " + relDay(r.d, t0) : "Not set")}${row("Written date", r.w != null ? fmtD(r.w) : "")}${row("Cheque no.", r.no ? "#" + esc(r.no) : "Not set")}${row("Type", esc(r.ty))}${row("Bank", esc(r.bank))}${row("Supplier balance", r.bal != null ? rs(r.bal) : "")}${row("Contact", esc(r.ct))}${row("Sheet", esc(r.tab) + " · row " + r.row)}</div>
     `;
-  cqShow(from);
+  cqModal._prev = prev || null; cqShow(from);
 }
 function cqOpenBank(bank, from){
+  cqModal._cur = { t: "bank", bank };
   const key = bank.toLowerCase().slice(0, 3), th = BANK_THEME[key] || { n: bank, m: bank.slice(0, 2).toUpperCase() };
   const t0 = todayMs(), n = new Date(t0), ms = new Date(n.getFullYear(), n.getMonth(), 1).getTime(), me = new Date(n.getFullYear(), n.getMonth() + 1, 1).getTime();
   const mine = CHQ.recs.filter(r => r.bank === bank), mon = mine.filter(r => r.d >= ms && r.d < me), up = mine.filter(r => r.d >= t0), w7 = mine.filter(r => r.d >= t0 && r.d < t0 + 7 * DAY);
@@ -1513,8 +1516,9 @@ function cqOpenBank(bank, from){
 }
 cqModal.addEventListener("click", e => {
   if(e.target === cqModal || e.target.closest("#cqMdX")){ cqCloseModal(); return; }
+  if(e.target.closest("[data-back]")){ const p = cqModal._prev; if(p && p.t === "day") cqOpenDay(p.ts); else if(p && p.t === "bank") cqOpenBank(p.bank); else cqCloseModal(); return; }
   const rd = e.target.closest("[data-rid]");
-  if(rd){ cqOpenCheque(+rd.dataset.rid); return; }
+  if(rd){ const c = cqModal._cur; cqOpenCheque(+rd.dataset.rid, null, c && c.t !== "chq" ? c : null); return; }
   const dd = e.target.closest("[data-day]");
   if(dd){ cqOpenDay(+dd.dataset.day); return; }
   const fb = e.target.closest("[data-findbank]");
