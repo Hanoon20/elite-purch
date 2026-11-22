@@ -1168,7 +1168,7 @@ const visibleMenus = () => MENUS.filter(m => m.show());
 function menuOf(hash){ return MENUS.find(m => m.hashes.includes(hash)) || MENUS[0]; }
 function applyMenus(){
   const nav = $("bottomNav"), vis = visibleMenus();
-  const on = vis.length > 1 && document.body.classList.contains("authed");
+  const on = vis.length > 0 && document.body.classList.contains("authed");
   nav.hidden = !on;
   document.body.classList.toggle("has-nav", on);
   const sig = vis.map(m => m.id).join();
@@ -1177,7 +1177,7 @@ function applyMenus(){
     nav.innerHTML = '<i class="nav-ind" aria-hidden="true"></i>' + vis.map(m => `<button type="button" data-m="${m.id}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${m.icon}</svg><span>${m.label}</span></button>`).join("");
   }
   const cur = menuOf(location.hash).id, idx = Math.max(0, vis.findIndex(m => m.id === cur));
-  nav.style.setProperty("--n", vis.length); nav.style.setProperty("--i", idx);
+  nav.dataset.n = vis.length; nav.style.setProperty("--n", vis.length); nav.style.setProperty("--i", idx);
   nav.querySelectorAll("button").forEach(x => x.setAttribute("aria-current", String(x.dataset.m === cur)));
 }
 $("bottomNav").addEventListener("click", e => {
@@ -1306,7 +1306,7 @@ function cqDetail(y){
   const { v, c } = cqYearData(y), m = cqSel[y], tot = v.reduce((a, b) => a + b, 0);
   const mine = CHQ.recs.filter(r => r.d != null && new Date(r.d).getFullYear() === y && new Date(r.d).getMonth() === m);
   const split = CHQ.banks.map(b => ({ b, v: sumA(mine.filter(r => r.bank === b)) })).filter(x => x.v);
-  return `<div class="cq-dm">${MON_L[m]} ${y}</div><div class="cq-dv" data-n="${v[m]}">${rs(v[m])}</div><div class="cq-dc2">${c[m]} cheque${c[m] === 1 ? "" : "s"}${v[m] ? ` · ${Math.round(v[m] / tot * 100)}% of ${y}` : ""}</div>
+  return `<div class="cq-dm">${MON_L[m]} ${y}</div><div class="cq-dv" data-n="${v[m]}">${rs(v[m])}</div><div class="cq-dc2">${c[m] ? `<button type="button" class="cq-link" data-mfind="${y}-${m}">${c[m]} cheque${c[m] === 1 ? "" : "s"} ›</button>` : "No cheques"}${v[m] ? ` · ${Math.round(v[m] / tot * 100)}% of ${y}` : ""}</div>
     ${split.length ? `<div class="cq-split">${split.map(x => `<span>${bankTag(x.b)}<b>${rs(x.v)}</b></span>`).join("")}</div>` : ""}`;
 }
 function cqYearCard(){
@@ -1314,7 +1314,7 @@ function cqYearCard(){
   const bars = v.map((x, i) => `<button type="button" class="cq-bar${i === m ? " sel" : ""}${y === nowD.getFullYear() && i === nowD.getMonth() ? " now" : ""}${x ? "" : " zero"}" style="--k:${i}" data-y="${y}" data-m="${i}" aria-pressed="${i === m}" aria-label="${MON_L[i]} ${y}: ${rs(x)}"><i style="height:${x ? Math.max(5, x / gmax * 100) : 2}%"></i><span>${MON_S[i]}</span></button>`).join("");
   return `<section class="cq-card cq-year" id="cqYr"><div class="cq-yhead"><div><h3>Cheques by month</h3><p class="cq-note">Tap a bar for the full amount</p></div>
     <div class="cq-ysw" role="group" aria-label="Year"><i style="transform:translateX(${y === 2027 ? 100 : 0}%)"></i><button type="button" data-yr="2026" aria-pressed="${y === 2026}">2026</button><button type="button" data-yr="2027" aria-pressed="${y === 2027}">2027</button></div></div>
-    <div class="cq-ytotrow"><span>${y} total</span><b data-n="${tot}">${rs(tot)}</b><em>${c.reduce((a, b) => a + b, 0)} cheques</em></div>
+    <div class="cq-ytotrow"><span>${y} total</span><b data-n="${tot}">${rs(tot)}</b><button type="button" class="cq-link" data-yfind="${y}">${c.reduce((a, b) => a + b, 0)} cheques ›</button></div>
     <div class="cq-bars">${bars}</div><div class="cq-detail">${cqDetail(y)}</div></section>`;
 }
 function cqYearRefresh(replay){
@@ -1444,25 +1444,75 @@ function cqCalMove(step){
   const g = $("calGrid"); g.classList.add(dir); setTimeout(() => g.classList.remove(dir), 450);
 }
 const cqModal = $("cqModal");
-function cqCloseModal(){ if(cqModal.hidden) return; cqModal.classList.remove("open"); document.body.classList.remove("modal-open"); setTimeout(() => { cqModal.hidden = true; }, 220); if(cqModal._from) try{ cqModal._from.focus(); }catch(e){} }
+function cqCloseModal(){ if(cqModal.hidden) return; const sh = cqModal.querySelector(".cq-sheet"); sh.style.transition = ""; sh.style.transform = ""; cqModal.classList.remove("open"); document.body.classList.remove("modal-open"); setTimeout(() => { cqModal.hidden = true; }, 220); if(cqModal._from) try{ cqModal._from.focus(); }catch(e){} }
 function cqOpenDay(ts, from){
   const list = CHQ.recs.filter(r => r.d === ts), tot = sumA(list), t0 = todayMs();
   const groups = CHQ.banks.map(b => ({ b, l: list.filter(r => r.bank === b).sort((x, y) => (y.a || 0) - (x.a || 0)) })).filter(g => g.l.length);
-  $("cqModalBody").innerHTML = `<div class="md-h"><div><div class="md-date" id="cqMdTitle">${new Date(ts).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</div><div class="md-rel">${relDay(ts, t0)}</div></div>
+  $("cqModalBody").innerHTML = `<i class="md-grab" aria-hidden="true"></i><div class="md-h"><div><div class="md-date" id="cqMdTitle">${new Date(ts).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</div><div class="md-rel">${relDay(ts, t0)}</div></div>
     <button type="button" class="md-x" id="cqMdX" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
     <div class="md-tot"><span>Total cheques</span><b>${rs(tot)}</b><em>${list.length} cheque${list.length > 1 ? "s" : ""} · ${list.length ? new Set(list.map(r => r.s)).size : 0} suppliers</em></div>
     <div class="md-banks">${groups.map(g => `<div class="md-bt bk-${esc(g.b.toLowerCase().slice(0, 3))}"><span>${esc((BANK_THEME[g.b.toLowerCase().slice(0, 3)] || { n: g.b }).n)}</span><b>${rs(sumA(g.l))}</b><em>${g.l.length} cheque${g.l.length > 1 ? "s" : ""}</em></div>`).join("")}</div>
     <div class="md-list">${groups.map(g => `<div class="md-sec"><div class="md-sh">${bankTag(g.b)}<span>${g.l.length} · ${rs(sumA(g.l))}</span></div>${g.l.map(r => `<div class="md-r"><div><b>${esc(r.s)}</b><em>${r.cash ? "Cash" : r.no ? "#" + esc(r.no) : "No cheque no."}</em></div><strong>${rs(r.a)}</strong></div>`).join("")}</div>`).join("")}</div>
     <button type="button" class="md-find" data-find="${msToIso(ts)}">Open in Finder</button>`;
-  cqModal._from = from || null; cqModal.hidden = false; document.body.classList.add("modal-open");
-  requestAnimationFrame(() => { cqModal.classList.add("open"); $("cqMdX").focus({ preventScroll: true }); });
+  cqShow(from);
+}
+function cqShow(from){
+  const sh = cqModal.querySelector(".cq-sheet"); sh.style.transition = ""; sh.style.transform = ""; sh.scrollTop = 0;
+  if(from) cqModal._from = from;
+  if(cqModal.hidden){
+    cqModal.hidden = false; document.body.classList.add("modal-open");
+    requestAnimationFrame(() => { cqModal.classList.add("open"); const x = $("cqMdX"); if(x) x.focus({ preventScroll: true }); });
+  }else{ const x = $("cqMdX"); if(x) x.focus({ preventScroll: true }); }
+}
+function cqOpenBank(bank, from){
+  const key = bank.toLowerCase().slice(0, 3), th = BANK_THEME[key] || { n: bank, m: bank.slice(0, 2).toUpperCase() };
+  const t0 = todayMs(), n = new Date(t0), ms = new Date(n.getFullYear(), n.getMonth(), 1).getTime(), me = new Date(n.getFullYear(), n.getMonth() + 1, 1).getTime();
+  const mine = CHQ.recs.filter(r => r.bank === bank), mon = mine.filter(r => r.d >= ms && r.d < me), up = mine.filter(r => r.d >= t0), w7 = mine.filter(r => r.d >= t0 && r.d < t0 + 7 * DAY);
+  const days = byDate(up).slice(0, 6);
+  const sup = new Map(); mon.forEach(r => sup.set(r.s, (sup.get(r.s) || 0) + (r.a || 0)));
+  const top = [...sup.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6);
+  const mm = new Map(); mine.forEach(r => { if(r.d == null) return; const d = new Date(r.d), k = d.getFullYear() * 12 + d.getMonth(); const o = mm.get(k) || { v: 0, c: 0 }; o.v += r.a || 0; o.c++; mm.set(k, o); });
+  const mk = [...mm.keys()].sort((a, b) => a - b), mx = Math.max(1, ...[...mm.values()].map(o => o.v));
+  $("cqModalBody").innerHTML = `<i class="md-grab" aria-hidden="true"></i>
+    <div class="md-hero bk-${esc(key)}"><span class="bk-art" aria-hidden="true"></span><button type="button" class="md-x md-x-lt" id="cqMdX" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+      <div class="bk-top"><span class="bk-mono">${th.m}</span><span class="bk-name" id="cqMdTitle">${esc(th.n)}</span></div>
+      <div class="md-hero-v">${rs(sumA(mon))}</div><div class="md-hero-s">${mon.length} cheques in ${n.toLocaleDateString("en-GB", { month: "long", year: "numeric" })}</div></div>
+    <div class="md-stats"><div><span>Next 7 days</span><b>${rs(sumA(w7))}</b><em>${w7.length} cheques</em></div><div><span>All upcoming</span><b>${rs(sumA(up))}</b><em>${up.length} cheques</em></div><div><span>All time</span><b>${rs(sumA(mine))}</b><em>${mine.length} cheques</em></div></div>
+    <div class="md-sec"><div class="md-sh"><span>Upcoming cheque days</span></div>${days.map(([d, r]) => `<button type="button" class="md-r md-btn" data-day="${d}"><div><b>${fmtDW(d)}</b><em>${relDay(d, t0)} · ${r.length} cheque${r.length > 1 ? "s" : ""}</em></div><strong>${rs(sumA(r))}</strong></button>`).join("") || '<p class="cq-note">No upcoming cheques.</p>'}</div>
+    <div class="md-sec"><div class="md-sh"><span>Top suppliers this month</span></div>${top.map(([nm, v]) => `<div class="md-r"><div><b>${esc(nm)}</b></div><strong>${rs(v)}</strong></div>`).join("") || '<p class="cq-note">Nothing this month.</p>'}</div>
+    <div class="md-sec"><div class="md-sh"><span>Month by month</span></div>${mk.map(k => { const o = mm.get(k), cur = k === n.getFullYear() * 12 + n.getMonth(); return `<div class="md-m${cur ? " cur" : ""}"><span>${MON_S[k % 12]} ${Math.floor(k / 12)}</span><i><u style="width:${o.v / mx * 100}%"></u></i><b>${short(o.v)}</b></div>`; }).join("")}</div>
+    <button type="button" class="md-find" data-findbank="${esc(bank)}">Open ${esc(th.n)} cheques in Finder</button>`;
+  cqShow(from);
 }
 cqModal.addEventListener("click", e => {
   if(e.target === cqModal || e.target.closest("#cqMdX")){ cqCloseModal(); return; }
+  const dd = e.target.closest("[data-day]");
+  if(dd){ cqOpenDay(+dd.dataset.day); return; }
+  const fb = e.target.closest("[data-findbank]");
+  if(fb){ cqApplyChip("month"); cqF.bank = fb.dataset.findbank; cqF.q = ""; chqTab = "finder"; cqPlay = true; cqCloseModal(); renderCheques(); window.scrollTo(0, 0); return; }
   const f = e.target.closest("[data-find]");
   if(f){ cqF = { from: f.dataset.find, to: f.dataset.find, min: "", max: "", bank: "", q: "", chip: "" }; chqTab = "finder"; cqCloseModal(); renderCheques(); window.scrollTo(0, 0); }
 });
 document.addEventListener("keydown", e => { if(e.key === "Escape") cqCloseModal(); });
+// swipe down to close (only when the sheet is scrolled to the top)
+{
+  const sh = cqModal.querySelector(".cq-sheet"); let y0 = 0, t0 = 0, dy = 0, drag = false, ok = false;
+  sh.addEventListener("touchstart", e => { y0 = e.touches[0].clientY; t0 = e.timeStamp; dy = 0; drag = false; ok = sh.scrollTop <= 0; }, { passive: true });
+  sh.addEventListener("touchmove", e => {
+    if(!ok) return;
+    dy = e.touches[0].clientY - y0;
+    if(dy > 6 && sh.scrollTop <= 0){ drag = true; e.preventDefault(); sh.style.transition = "none"; sh.style.transform = `translateY(${dy}px)`; cqModal.style.background = `rgba(5,8,8,${Math.max(0, .62 - dy / 700)})`; }
+    else if(drag && dy <= 6){ sh.style.transform = ""; }
+  }, { passive: false });
+  const end = e => {
+    if(!drag){ return; }
+    drag = false; cqModal.style.background = "";
+    const fast = dy > 60 && dy / Math.max(1, e.timeStamp - t0) > 0.6;
+    if(dy > 110 || fast){ sh.style.transition = "transform .24s ease"; sh.style.transform = "translateY(105%)"; setTimeout(cqCloseModal, 200); }
+    else{ sh.style.transition = "transform .25s cubic-bezier(.2,.9,.25,1.05)"; sh.style.transform = ""; }
+  };
+  sh.addEventListener("touchend", end); sh.addEventListener("touchcancel", end);
+}
 
 function cqIssues(){
   const out = [], { recs, blocks } = CHQ;
@@ -1512,8 +1562,12 @@ chqView.addEventListener("click", e => {
   if(yr){ const y = +yr.dataset.yr; if(y !== cqYear){ cqYear = y; cqYearRefresh(true); } return; }
   const bar = t.closest(".cq-bar[data-y]");
   if(bar){ cqSel[+bar.dataset.y] = +bar.dataset.m; cqYearRefresh(false); return; }
+  const yf = t.closest("[data-yfind]");
+  if(yf){ const y = +yf.dataset.yfind; cqF = { from: y + "-01-01", to: y + "-12-31", min: "", max: "", bank: "", q: "", chip: "" }; chqTab = "finder"; cqPlay = true; renderCheques(); window.scrollTo(0, 0); return; }
+  const mf = t.closest("[data-mfind]");
+  if(mf){ const [y, m] = mf.dataset.mfind.split("-").map(Number); cqF = { from: msToIso(new Date(y, m, 1).getTime()), to: msToIso(new Date(y, m + 1, 0).getTime()), min: "", max: "", bank: "", q: "", chip: "" }; chqTab = "finder"; cqPlay = true; renderCheques(); window.scrollTo(0, 0); return; }
   const bk = t.closest("[data-bank]");
-  if(bk){ cqApplyChip("month"); cqF.bank = bk.dataset.bank; cqF.q = ""; chqTab = "finder"; renderCheques(); window.scrollTo(0, 0); return; }
+  if(bk){ cqOpenBank(bk.dataset.bank, bk); return; }
   const g = t.closest("[data-go]");
   if(g){ cqF = { from: g.dataset.go, to: g.dataset.go, min: "", max: "", bank: "", q: "", chip: "" }; chqTab = "finder"; renderCheques(); window.scrollTo(0, 0); return; }
   const cn = t.closest("[data-cal]");
