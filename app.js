@@ -1315,7 +1315,7 @@ function cqYearCard(){
   const bars = v.map((x, i) => `<button type="button" class="cq-bar${i === m ? " sel" : ""}${y === nowD.getFullYear() && i === nowD.getMonth() ? " now" : ""}${x ? "" : " zero"}" style="--k:${i}" data-y="${y}" data-m="${i}" aria-pressed="${i === m}" aria-label="${MON_L[i]} ${y}: ${rs(x)}"><i style="height:${x ? Math.max(5, x / gmax * 100) : 2}%"></i><span>${MON_S[i]}</span></button>`).join("");
   return `<section class="cq-card cq-year" id="cqYr"><div class="cq-yhead"><div><h3>Cheques by month</h3><p class="cq-note">Tap a bar for the full amount</p></div>
     <div class="cq-ysw" role="group" aria-label="Year"><i style="transform:translateX(${y === 2027 ? 100 : 0}%)"></i><button type="button" data-yr="2026" aria-pressed="${y === 2026}">2026</button><button type="button" data-yr="2027" aria-pressed="${y === 2027}">2027</button></div></div>
-    <div class="cq-ytotrow"><span>${y} total</span><b data-n="${tot}">${rs(tot)}</b><button type="button" class="cq-link" data-yfind="${y}">${c.reduce((a, b) => a + b, 0)} cheques ›</button></div>
+    <div class="cq-ytotrow"><span>${y} total</span><b data-n="${tot}">${rs(tot)}</b></div>
     <div class="cq-bars">${bars}</div><div class="cq-detail">${cqDetail(y)}</div></section>`;
 }
 function cqYearRefresh(replay){
