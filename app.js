@@ -1309,7 +1309,7 @@ function cqRegisterHtml(r){
     const dd = x.date != null && days(x.terms) != null ? x.date + days(x.terms) * DAY : null;
     const late = dd != null && r.d != null ? Math.round((r.d - dd) / DAY) : null;
     return `<div class="md-inv"><div class="md-inv-t"><b>${esc(x.no || "No invoice no.")}</b><strong>${rs(x.amt)}</strong></div>
-      <div class="md-inv-s">${x.date != null ? "Invoice " + fmtD(x.date) : "No invoice date"}${x.terms ? " · " + esc(x.terms) : ""}${x.pm ? " · " + esc(x.pm) : ""}</div>
+      <div class="md-inv-s">${x.date != null ? "Invoice " + fmtD(x.date) : "No invoice date"}</div>
       ${dd != null ? `<div class="md-inv-d">Due ${fmtD(dd)}${late != null ? ` <span class="${late > 0 ? "late" : "ok"}">${late > 0 ? late + " days after due" : late === 0 ? "on due date" : Math.abs(late) + " days before due"}</span>` : ""}</div>` : ""}</div>`;
   }).join("");
   const others = g.chq.filter(x => x !== m);
@@ -1317,9 +1317,7 @@ function cqRegisterHtml(r){
   const st = x => [x.ws && "Written " + x.ws, x.gs && "Given " + x.gs, x.rs && "Realized " + x.rs].filter(Boolean).join(" · ");
   return `<div class="md-sec"><div class="md-sh"><span>Invoices · Chq Rgstr</span><span>${g.inv.length} · ${rs(invTot)}</span></div>
     ${termsList.length ? `<div class="md-terms"><span>Credit terms</span><b>${esc(termsList.join(" / "))}</b></div>` : ""}
-    ${invHtml || '<p class="cq-note">No invoice lines in the register for this cheque.</p>'}
-    <div class="md-kvs md-kvs-s"><div class="md-kv"><span>Invoices total</span><b>${rs(invTot)}</b></div><div class="md-kv"><span>Cheques in this settlement (${g.chq.length})</span><b>${rs(chqTot)}</b></div>${Math.abs(invTot - chqTot) > 1 && g.inv.length ? `<div class="md-kv"><span>Difference</span><b>${rs(chqTot - invTot)}</b></div>` : ""}${st(m) ? `<div class="md-kv"><span>Register status</span><b>${esc(st(m))}</b></div>` : ""}${m.rem ? `<div class="md-kv"><span>Remarks</span><b>${esc(m.rem)}</b></div>` : ""}</div>
-    ${others.length ? `<div class="md-sh" style="margin-top:12px"><span>Other cheques in this settlement</span></div>${others.map(x => { const z = rec(x.no); return `<${z ? 'button type="button" data-rid="' + z.id + '"' : "div"} class="md-r${z ? " md-btn" : ""}"><div><b>#${esc(x.no)}${x.bank ? " · " + esc(x.bank) : ""}</b><em>${x.date != null ? fmtD(x.date) : "No date"}</em></div><strong>${rs(x.amt)}</strong></${z ? "button" : "div"}>`; }).join("")}` : ""}</div>`;
+    ${invHtml || '<p class="cq-note">No invoice lines in the register for this cheque.</p>'}</div>`;
 }
 async function loadCheques(force){
   if(chqLoading) return;
