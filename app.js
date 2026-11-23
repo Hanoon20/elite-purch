@@ -1222,6 +1222,20 @@ function bankFromTitle(t){
   return t.replace(/chqs?/g, "").trim() || "Other";
 }
 
+// Safety net for a sheet whose locale read d/m as m/d: a numeric cheque date that falls outside the
+// tab's month, but lands inside it when day and month are swapped, is swapped back.
+function chqDateFix(v, tm){
+  const ms = chqDate(v);
+  if(ms == null || typeof v !== "number" || !tm) return ms;
+  const o = new Date(ms);
+  if(o.getFullYear() === tm.y && o.getMonth() === tm.m) return ms;
+  const dA = o.getDate(), mA = o.getMonth() + 1;
+  if(dA <= 12 && dA !== mA){
+    const sw = new Date(o.getFullYear(), dA - 1, mA);
+    if(sw.getFullYear() === tm.y && sw.getMonth() === tm.m) return sw.getTime();
+  }
+  return ms;
+}
 function parseChequeTab(name, rows, out, blocks){
   const tm = tabMonth(name);
   [[0, "Commercial"], [10, "Amana"]].forEach(([off, def]) => {
@@ -1241,12 +1255,72 @@ function parseChequeTab(name, rows, out, blocks){
       if(!cur){ cur = { tab: name, bank, total: null, sum: 0, n: 0 }; blocks.push(cur); }
       const ty = txt(c(6));
       const rec = { id: out.length, ct: txt(c(2)), tab: name, tm, bank, s: sup || "(No name)", no, ty, cash: /cash/i.test(ty),
-        d: chqDate(c(7)), w: chqDate(c(4)), a: amt, bal: numOf(c(3)), row: i + 1 };
+        d: chqDateFix(c(7), tm), w: chqDate(c(4)), a: amt, bal: numOf(c(3)), row: i + 1 };
       out.push(rec); cur.sum += amt || 0; cur.n++;
     });
   });
 }
 
+// ---- Chq Rgstr: invoices, credit terms and cheque status, grouped per supplier settlement ----
+function regNum(v){
+  if(typeof v === "number") return isFinite(v) ? v : null;
+  const t = txt(v).replace(/^rs\.?/i, "").replace(/[,\s]/g, "");
+  return /^-?\d+(\.\d+)?$/.test(t) ? +t : null;
+}
+const bankKey = b => { b = (b || "").toLowerCase(); return b.includes("com") ? "com" : b.includes("ama") ? "ama" : b.includes("ndb") ? "ndb" : b.slice(0, 3); };
+const normName = s => (s || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+function parseRegister(rows){
+  const groups = [], byNo = new Map(); let cur = null;
+  rows.forEach((r, i) => {
+    if(i < 2) return;
+    const sup = txt(r[2]), inv = txt(r[7]), ia = regNum(r[8]), cno = txt(r[12]);
+    if(sup){ cur = { sup, inv: [], chq: [], row: i + 1 }; groups.push(cur); }
+    if(!cur) return;
+    if(inv || ia != null) cur.inv.push({ no: inv, date: chqDate(r[4]), pm: txt(r[5]), terms: txt(r[6]), amt: ia, item: txt(r[3]), row: i + 1 });
+    if(cno){
+      const c = { no: cno, bank: txt(r[11]), amt: regNum(r[13]), date: chqDate(r[14]), written: chqDate(r[10]), ws: txt(r[9]), gs: txt(r[15]), rs: txt(r[16]), rem: txt(r[17]), row: i + 1, g: cur };
+      cur.chq.push(c);
+      if(!byNo.has(cno)) byNo.set(cno, []); byNo.get(cno).push(c);
+    }
+  });
+  return { groups, byNo };
+}
+function matchRegister(r){
+  const reg = CHQ && CHQ.reg; if(!reg || !r.no) return null;
+  let c = reg.byNo.get(String(r.no)); if(!c || !c.length) return null;
+  if(c.length > 1){
+    const b = c.filter(x => bankKey(x.bank) === bankKey(r.bank)); if(b.length) c = b;
+  }
+  if(c.length > 1){
+    const n = normName(r.s), s = c.filter(x => { const m = normName(x.g.sup); return m && n && (m.includes(n) || n.includes(m)); }); if(s.length) c = s;
+  }
+  if(c.length > 1){ const a = c.filter(x => x.amt === r.a); if(a.length) c = a; }
+  return c[0];
+}
+function cqRegisterHtml(r){
+  if(!CHQ.reg) return "";
+  const m = matchRegister(r);
+  if(!m) return `<div class="md-sec"><div class="md-sh"><span>Invoices · Chq Rgstr</span></div><p class="cq-note">No matching entry for cheque #${esc(r.no || "-")} in the Chq Rgstr tab.</p></div>`;
+  const g = m.g, t0 = todayMs();
+  const termsList = [...new Set(g.inv.map(x => x.terms).filter(Boolean))];
+  const invTot = g.inv.reduce((a, x) => a + (x.amt || 0), 0), chqTot = g.chq.reduce((a, x) => a + (x.amt || 0), 0);
+  const days = t => { const k = parseInt(t, 10); return isFinite(k) ? k : null; };
+  const invHtml = g.inv.map(x => {
+    const dd = x.date != null && days(x.terms) != null ? x.date + days(x.terms) * DAY : null;
+    const late = dd != null && r.d != null ? Math.round((r.d - dd) / DAY) : null;
+    return `<div class="md-inv"><div class="md-inv-t"><b>${esc(x.no || "No invoice no.")}</b><strong>${rs(x.amt)}</strong></div>
+      <div class="md-inv-s">${x.date != null ? "Invoice " + fmtD(x.date) : "No invoice date"}${x.terms ? " · " + esc(x.terms) : ""}${x.pm ? " · " + esc(x.pm) : ""}</div>
+      ${dd != null ? `<div class="md-inv-d">Due ${fmtD(dd)}${late != null ? ` <span class="${late > 0 ? "late" : "ok"}">${late > 0 ? late + " days after due" : late === 0 ? "on due date" : Math.abs(late) + " days before due"}</span>` : ""}</div>` : ""}</div>`;
+  }).join("");
+  const others = g.chq.filter(x => x !== m);
+  const rec = no => CHQ.recs.find(z => z.no === String(no));
+  const st = x => [x.ws && "Written " + x.ws, x.gs && "Given " + x.gs, x.rs && "Realized " + x.rs].filter(Boolean).join(" · ");
+  return `<div class="md-sec"><div class="md-sh"><span>Invoices · Chq Rgstr</span><span>${g.inv.length} · ${rs(invTot)}</span></div>
+    ${termsList.length ? `<div class="md-terms"><span>Credit terms</span><b>${esc(termsList.join(" / "))}</b></div>` : ""}
+    ${invHtml || '<p class="cq-note">No invoice lines in the register for this cheque.</p>'}
+    <div class="md-kvs md-kvs-s"><div class="md-kv"><span>Invoices total</span><b>${rs(invTot)}</b></div><div class="md-kv"><span>Cheques in this settlement (${g.chq.length})</span><b>${rs(chqTot)}</b></div>${Math.abs(invTot - chqTot) > 1 && g.inv.length ? `<div class="md-kv"><span>Difference</span><b>${rs(chqTot - invTot)}</b></div>` : ""}${st(m) ? `<div class="md-kv"><span>Register status</span><b>${esc(st(m))}</b></div>` : ""}${m.rem ? `<div class="md-kv"><span>Remarks</span><b>${esc(m.rem)}</b></div>` : ""}</div>
+    ${others.length ? `<div class="md-sh" style="margin-top:12px"><span>Other cheques in this settlement</span></div>${others.map(x => { const z = rec(x.no); return `<${z ? 'button type="button" data-rid="' + z.id + '"' : "div"} class="md-r${z ? " md-btn" : ""}"><div><b>#${esc(x.no)}${x.bank ? " · " + esc(x.bank) : ""}</b><em>${x.date != null ? fmtD(x.date) : "No date"}</em></div><strong>${rs(x.amt)}</strong></${z ? "button" : "div"}>`; }).join("")}` : ""}</div>`;
+}
 async function loadCheques(force){
   if(chqLoading) return;
   if(CHQ && !force) return;
@@ -1255,12 +1329,15 @@ async function loadCheques(force){
     const base = `https://sheets.googleapis.com/v4/spreadsheets/${CHQ_SHEET_ID}`;
     const meta = await apiGet(`${base}?fields=sheets.properties.title`);
     const tabs = meta.sheets.map(s => s.properties.title).filter(n => !CHQ_SKIP.includes(n.trim().toLowerCase()) && tabMonth(n));
-    const qs = tabs.map(n => "ranges=" + encodeURIComponent(`'${n}'!A:S`)).join("&");
+    const regTab = (meta.sheets.map(x => x.properties.title).find(n => n.trim().toLowerCase() === "chq rgstr")) || null;
+    const qs = tabs.map(n => "ranges=" + encodeURIComponent(`'${n}'!A:S`)).concat(regTab ? ["ranges=" + encodeURIComponent(`'${regTab}'!A:R`)] : []).join("&");
     const data = await apiGet(`${base}/values:batchGet?${qs}&${API_OPTS}&fields=valueRanges(values)`);
     const recs = [], blocks = [];
-    data.valueRanges.forEach((vr, i) => parseChequeTab(tabs[i], vr.values || [], recs, blocks));
+    data.valueRanges.slice(0, tabs.length).forEach((vr, i) => parseChequeTab(tabs[i], vr.values || [], recs, blocks));
     recs.forEach(r => { r.dd = r.d; });
-    CHQ = { recs, blocks, tabs, at: Date.now(), banks: [...new Set(recs.map(r => r.bank))] };
+    let reg = null;
+    try{ if(regTab && data.valueRanges[tabs.length]) reg = parseRegister(data.valueRanges[tabs.length].values || []); }catch(e){ reg = null; }
+    CHQ = { recs, blocks, tabs, reg, at: Date.now(), banks: [...new Set(recs.map(r => r.bank))] };
   }catch(e){
     chqErr = e.status === 403 || e.status === 404
       ? "This Google account doesn't have access to the cheque sheet. Ask the owner to share it, then sign in again."
@@ -1490,6 +1567,7 @@ function cqOpenCheque(id, from, prev){
       <div class="bk-top"><span class="bk-mono">${th.m}</span><span class="bk-name">${esc(th.n)}</span></div>
       <div class="md-hero-v">${rs(r.a)}</div><div class="md-hero-s" id="cqMdTitle">${esc(r.s)}</div><span class="md-pill ${st[1]}">${st[0]}</span></div>
     <div class="md-kvs">${row("Cheque date", r.d != null ? fmtD(r.d) + " · " + relDay(r.d, t0) : "Not set")}${row("Written date", r.w != null ? fmtD(r.w) : "")}${row("Cheque no.", r.no ? "#" + esc(r.no) : "Not set")}${row("Type", esc(r.ty))}${row("Bank", esc(r.bank))}${row("Supplier balance", r.bal != null ? rs(r.bal) : "")}${row("Contact", esc(r.ct))}${row("Sheet", esc(r.tab) + " · row " + r.row)}</div>
+    ${cqRegisterHtml(r)}
     `;
   cqModal._prev = prev || null; cqShow(from);
 }
