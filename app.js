@@ -1176,9 +1176,28 @@ const CHQ_SKIP = ["chq rgstr", "date summary"];
 const isOwner = () => !CHQ_ALLOWED.length || CHQ_ALLOWED.includes((currentUserEmail || "").trim().toLowerCase());
 const MENUS = [
   { id: "purchase", label: "Purchase", home: "#dashboard", hashes: ["", "#dashboard", "#suppliers", "#sheets", "#log"], show: () => true,
-    icon: '<path d="M6.2 8h11.6l-.9 10.4a2.2 2.2 0 0 1-2.2 2H9.3a2.2 2.2 0 0 1-2.2-2L6.2 8z"/><path d="M9 8V7a3 3 0 0 1 6 0v1"/><path d="M9.5 12.5h5"/>' },
+    svg: `<svg class="nav-ic" viewBox="0 0 48 48" aria-hidden="true"><defs>
+<linearGradient id="pbT" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFE29A"/><stop offset="1" stop-color="#F5B33B"/></linearGradient>
+<linearGradient id="pbL" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F6A93A"/><stop offset="1" stop-color="#E07F1B"/></linearGradient>
+<linearGradient id="pbR" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#D9801E"/><stop offset="1" stop-color="#B85F0F"/></linearGradient>
+<linearGradient id="pbTp" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7C8CFF"/><stop offset="1" stop-color="#3D4FE0"/></linearGradient></defs>
+<ellipse cx="24" cy="44.5" rx="14" ry="2.4" fill="#000" opacity=".28"/>
+<polygon points="8,16 24,24 24,42 8,34" fill="url(#pbL)"/><polygon points="24,24 40,16 40,34 24,42" fill="url(#pbR)"/><polygon points="24,8 40,16 24,24 8,16" fill="url(#pbT)"/>
+<polygon points="29,10.5 35,13.5 19,21.5 13,18.5" fill="url(#pbTp)"/><polygon points="13,18.5 19,21.5 19,39.5 13,36.5" fill="#4457E8" opacity=".92"/>
+<polyline points="8,16 24,8 40,16" fill="none" stroke="#fff" stroke-opacity=".55" stroke-width=".9" stroke-linejoin="round"/>
+<path d="M27 30.5l9-4.6" stroke="#fff" stroke-opacity=".5" stroke-width="1.4" stroke-linecap="round"/><path d="M27 33.5l9-4.6" stroke="#fff" stroke-opacity=".3" stroke-width="1.4" stroke-linecap="round"/></svg>` },
   { id: "cheque", label: "Cheque", home: "#cheques", hashes: ["#cheques"], show: isOwner,
-    icon: '<rect x="2.5" y="5.5" width="19" height="13" rx="2.8"/><path d="M6 9.8h6.5M6 13h3.5"/><path d="M13.6 15.6c.9-2.3 1.7-2.5 2.5-.9.4.8 1 .8 1.8-.7"/><path d="M17 8.6h1.4"/>' }
+    svg: `<svg class="nav-ic" viewBox="0 0 48 48" aria-hidden="true"><defs>
+<linearGradient id="ckB" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2F6B4F"/><stop offset="1" stop-color="#143D2B"/></linearGradient>
+<linearGradient id="ckG" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFE9A3"/><stop offset=".55" stop-color="#E8B730"/><stop offset="1" stop-color="#B8860B"/></linearGradient></defs>
+<ellipse cx="24" cy="44.5" rx="16" ry="2.2" fill="#000" opacity=".28"/>
+<rect x="4" y="15" width="40" height="25" rx="4" fill="#0C2A1D"/><rect x="4" y="12" width="40" height="25" rx="4" fill="url(#ckB)"/>
+<rect x="4.6" y="12.6" width="38.8" height="23.8" rx="3.5" fill="none" stroke="#fff" stroke-opacity=".22" stroke-width="1"/>
+<rect x="8" y="16" width="5" height="17" rx="1.2" fill="#C9D3CE" opacity=".85"/>
+<circle cx="21" cy="20" r="4.4" fill="url(#ckG)"/><circle cx="21" cy="20" r="2.7" fill="none" stroke="#9A6F08" stroke-opacity=".55" stroke-width=".8"/>
+<path d="M17 28h14M17 31.5h9" stroke="#6FA487" stroke-width="1.7" stroke-linecap="round" opacity=".85"/>
+<path d="M30 33c1.6-4 3-4.4 3.6-1.6.5 2 1.6 1.7 3-.9" fill="none" stroke="#E9F2EE" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+<g transform="translate(33 17) rotate(42)"><rect x="-2.3" y="-14" width="4.6" height="6" rx="1.6" fill="url(#ckG)"/><rect x="-2.3" y="-8.5" width="4.6" height="15" rx="1.2" fill="#E9EDE8"/><rect x="0.6" y="-8.5" width="1.7" height="15" fill="#9AA8A0" opacity=".55"/><polygon points="-2.3,6.5 2.3,6.5 0,12" fill="url(#ckG)"/></g></svg>` }
 ];
 const visibleMenus = () => MENUS.filter(m => m.show());
 function menuOf(hash){ return MENUS.find(m => m.hashes.includes(hash)) || MENUS[0]; }
@@ -1190,7 +1209,7 @@ function applyMenus(){
   const sig = vis.map(m => m.id).join();
   if(nav.dataset.sig !== sig){
     nav.dataset.sig = sig;
-    nav.innerHTML = '<i class="nav-ind" aria-hidden="true"></i>' + vis.map(m => `<button type="button" data-m="${m.id}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${m.icon}</svg><span>${m.label}</span></button>`).join("");
+    nav.innerHTML = '<i class="nav-ind" aria-hidden="true"></i>' + vis.map(m => `<button type="button" data-m="${m.id}">${m.svg}<span>${m.label}</span></button>`).join("");
   }
   const cur = menuOf(location.hash).id, idx = Math.max(0, vis.findIndex(m => m.id === cur));
   nav.dataset.n = vis.length; nav.style.setProperty("--n", vis.length); nav.style.setProperty("--i", idx);
