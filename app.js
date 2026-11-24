@@ -1023,7 +1023,7 @@ function setLogAccess(r){
   applyLogAccess();
   if(!lgView.hidden) renderLogView();
 }
-// Time on the app: one ping a minute while the tab is visible and the person has touched the screen in the last 3 minutes.
+// Time on the app: one ping every 30 s while the tab is visible and the person has touched the screen in the last 3 minutes.
 let logSid = "", logStart = 0, logActiveMin = 0, logPingTimer = 0;
 async function logSignIn(){
   if(!LOG_URL) return;
@@ -1031,13 +1031,13 @@ async function logSignIn(){
   logStart = Date.now(); logActiveMin = 0;
   setLogAccess(await logCall({ action: "visit", device: await deviceInfo(), sid: logSid }));
   clearInterval(logPingTimer);
-  logPingTimer = setInterval(logPing, 60000);
+  logPingTimer = setInterval(logPing, 30000);
 }
 function logPing(){
   if(!LOG_URL || !accessToken || !logSid) return;
   if(document.visibilityState !== "visible" || Date.now() - lastActive > 180000) return;
-  logActiveMin++;
-  logCall({ action: "ping", sid: logSid, mins: logActiveMin });
+  logActiveMin += 0.5;   // 30 s of real use per ping
+  logCall({ action: "ping", sid: logSid, mins: Math.ceil(logActiveMin) });
 }
 async function checkLogAccess(){
   if(!LOG_URL || !accessToken || logEditor !== null) return;
