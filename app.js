@@ -226,6 +226,8 @@ function enterDashboard(){
   if(!currentUserEmail) fetchUserEmail();
   loadAll(false);
   logSignIn();
+  // landed on #cheques before signing in: start the cheque load now, no manual refresh needed
+  if(location.hash === "#cheques"){ chqErr = ""; route(); }
 }
  
 // ---------------------------------------------------------------------------
@@ -1021,9 +1023,21 @@ function setLogAccess(r){
   applyLogAccess();
   if(!lgView.hidden) renderLogView();
 }
+// Time on the app: one ping a minute while the tab is visible and the person has touched the screen in the last 3 minutes.
+let logSid = "", logStart = 0, logActiveMin = 0, logPingTimer = 0;
 async function logSignIn(){
   if(!LOG_URL) return;
-  setLogAccess(await logCall({ action: "visit", device: await deviceInfo() }));
+  logSid = Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  logStart = Date.now(); logActiveMin = 0;
+  setLogAccess(await logCall({ action: "visit", device: await deviceInfo(), sid: logSid }));
+  clearInterval(logPingTimer);
+  logPingTimer = setInterval(logPing, 60000);
+}
+function logPing(){
+  if(!LOG_URL || !accessToken || !logSid) return;
+  if(document.visibilityState !== "visible" || Date.now() - lastActive > 180000) return;
+  logActiveMin++;
+  logCall({ action: "ping", sid: logSid, mins: logActiveMin });
 }
 async function checkLogAccess(){
   if(!LOG_URL || !accessToken || logEditor !== null) return;
@@ -1063,6 +1077,7 @@ const LG_ICONS = {
   Desktop: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M9 20h6M12 16v4"/></svg>'
 };
 const lgTag = access => `<span class="lg-tag ${access === "Editor" ? "editor" : access === "Viewer" ? "viewer" : "none"}">${esc(access || "—")}</span>`;
+const lgMins = m => !m ? "" : m < 60 ? m + " min" : Math.floor(m / 60) + " h " + (m % 60 ? (m % 60) + " min" : "");
 const lgDevLine = r => [r.model || r.device, r.os, r.browser, r.display].filter(Boolean).map(String).join(" · ");
  
 function renderLogView(){
@@ -1081,14 +1096,14 @@ function renderLogView(){
   const people = new Map();
   for(const r of rows){
     const p = people.get(r.email);
-    if(p) p.count++; else people.set(r.email, { email: r.email, access: r.access, count: 1, last: r });
+    if(p){ p.count++; p.mins += r.mins || 0; } else people.set(r.email, { email: r.email, access: r.access, count: 1, mins: r.mins || 0, last: r });
   }
   const today = lgDay(new Date()), weekAgo = Date.now() - 7 * 86400000;
   const nToday = rows.filter(r => lgDay(r.d) === today).length, nWeek = rows.filter(r => r.d.getTime() >= weekAgo).length;
   const stat = (cls, k, v, s) => `<div class="sv-stat ${cls}"><div class="k">${k}</div><div class="v num">${esc(v)}</div>${s ? `<div class="s">${esc(s)}</div>` : ""}</div>`;
   stats.innerHTML = `<div class="sv-stats">` +
     stat("main", "Sign-ins logged", fmtInt(rows.length), rows[0] ? `Latest: ${lgDate(rows[0].d)}, ${lgClock(rows[0].d)}` : "Nothing logged yet") +
-    stat("", "People", fmtInt(people.size)) + stat("", "Today", fmtInt(nToday)) + stat("", "7 days", fmtInt(nWeek)) + `</div>`;
+    stat("", "People", fmtInt(people.size)) + stat("", "Time used", lgMins(rows.reduce((t, r) => t + (r.mins || 0), 0)) || "—") + stat("", "Today", fmtInt(nToday)) + `</div>`;
  
   const q = lgQuery.trim().toLowerCase();
   const hay = r => [r.email, r.device, r.model, r.os, r.browser, r.type, r.display, r.access].join(" ").toLowerCase();
@@ -1097,12 +1112,12 @@ function renderLogView(){
   if(lgTab === "people"){
     const list = [...people.values()].filter(p => !q || hay(p.last).includes(q));
     body = list.map(p => `<div class="lg-row"><div class="lg-ic">${esc((p.email[0] || "?").toUpperCase())}</div>` +
-      `<div><div class="lg-email">${esc(p.email)}${lgTag(p.access)}</div><div class="lg-dev">${fmtInt(p.count)} sign-in${p.count === 1 ? "" : "s"} · ${esc(lgDevLine(p.last))}</div></div>` +
+      `<div><div class="lg-email">${esc(p.email)}${lgTag(p.access)}</div><div class="lg-dev">${fmtInt(p.count)} sign-in${p.count === 1 ? "" : "s"} · ${esc(lgDevLine(p.last))}</div>${p.mins ? `<div class="lg-use">Total time ${lgMins(p.mins)}</div>` : ""}</div>` +
       `<div class="lg-when"><div class="lg-time">${lgClock(p.last.d)}</div><div class="lg-date">${lgDate(p.last.d)} · ${lgAgo(p.last.d)}</div></div></div>`).join("");
   } else {
     const list = rows.filter(r => !q || hay(r).includes(q));
     body = list.map(r => `<div class="lg-row"><div class="lg-ic" title="${esc(r.type || "")}">${LG_ICONS[r.type] || LG_ICONS.Desktop}</div>` +
-      `<div><div class="lg-email">${esc(r.email)}${lgTag(r.access)}</div><div class="lg-dev">${esc(lgDevLine(r))}${r.screen ? " · " + esc(r.screen) : ""}</div></div>` +
+      `<div><div class="lg-email">${esc(r.email)}${lgTag(r.access)}</div><div class="lg-dev">${esc(lgDevLine(r))}${r.screen ? " · " + esc(r.screen) : ""}</div>${r.mins ? `<div class="lg-use">Used ${lgMins(r.mins)}</div>` : ""}</div>` +
       `<div class="lg-when"><div class="lg-time">${lgClock(r.d)}</div><div class="lg-date">${lgDate(r.d)} · ${lgAgo(r.d)}</div></div></div>`).join("");
   }
   const empty = rows.length ? "Nothing matches your search." : "No sign-ins logged yet. They appear here after people sign in with Google.";
@@ -1321,6 +1336,7 @@ function cqRegisterHtml(r){
 }
 async function loadCheques(force){
   if(chqLoading) return;
+  if(!accessToken) return;   // not signed in yet: enterDashboard() starts the load after sign-in
   if(CHQ && !force) return;
   chqLoading = true; chqErr = ""; renderCheques();
   try{
