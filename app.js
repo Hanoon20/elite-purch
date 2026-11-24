@@ -1471,15 +1471,15 @@ function cqOverview(){
   const sup = new Map(); month.forEach(r => sup.set(r.s, (sup.get(r.s) || 0) + (r.a || 0)));
   const top = [...sup.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6), tmx = top.length ? top[0][1] : 1;
   const mname = n.toLocaleDateString("en-GB", { month: "long", year: "numeric" });
-  return `<div class="sv-stats cq-stats">
+  return `<div class="cq-ov"><div class="sv-stats cq-stats">
     ${stat(mname, `<span data-n="${sumA(month)}">${rs(sumA(month))}</span>`, `${month.length} cheques · ${rs(sumA(left))} still to clear`, true)}
     ${stat("Today", fmtCompact(sumA(today)), today.length + " cheques")}
     ${stat("Next 7 days", fmtCompact(sumA(w7)), w7.length + " cheques")}
     ${stat("All upcoming", fmtCompact(sumA(up)), up.length + " cheques")}</div>
   <div class="bk-grid">${bankCards}</div>
-  <section class="cq-card"><h3>Upcoming cheque days</h3><p class="cq-note">Tap a day to see its cheques</p>${days.map(([d, r]) => `<button type="button" class="cq-bl" data-go="${msToIso(d)}"><span class="cq-bl-l"><b>${fmtDW(d)}</b><em>${relDay(d, t0)} · ${r.length}</em></span><span class="cq-bl-v">${rs(sumA(r))}</span><i style="width:${sumA(r) / dmx * 100}%"></i></button>`).join("") || '<p class="cq-note">No upcoming cheques.</p>'}</section>
-  ${cqYearCard()}
-  <section class="cq-card"><h3>Top suppliers this month</h3>${top.map(([s, v]) => `<div class="cq-bl static"><span class="cq-bl-l"><b>${esc(s)}</b></span><span class="cq-bl-v">${rs(v)}</span><i style="width:${v / tmx * 100}%"></i></div>`).join("") || '<p class="cq-note">Nothing this month.</p>'}</section>`;
+  <section class="cq-card cq-days"><h3>Upcoming cheque days</h3><p class="cq-note">Tap a day to see its cheques</p>${days.map(([d, r]) => `<button type="button" class="cq-bl" data-go="${msToIso(d)}"><span class="cq-bl-l"><b>${fmtDW(d)}</b><em>${relDay(d, t0)} · ${r.length}</em></span><span class="cq-bl-v">${rs(sumA(r))}</span><i style="width:${sumA(r) / dmx * 100}%"></i></button>`).join("") || '<p class="cq-note">No upcoming cheques.</p>'}</section>
+  <div class="cq-yr">${cqYearCard()}</div>
+  <section class="cq-card cq-sup"><h3>Top suppliers this month</h3>${top.map(([s, v]) => `<div class="cq-bl static"><span class="cq-bl-l"><b>${esc(s)}</b></span><span class="cq-bl-v">${rs(v)}</span><i style="width:${v / tmx * 100}%"></i></div>`).join("") || '<p class="cq-note">Nothing this month.</p>'}</section></div>`;
 }
 
 let cqF = { from: "", to: "", min: "", max: "", bank: "", q: "", chip: "all" }, cqOpen = false;
