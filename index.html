@@ -1050,7 +1050,13 @@
   .cq-acc summary span{min-width:24px;padding:2px 8px;text-align:center;border-radius:999px;background:var(--track-bg);font-size:12px;}
   .cq-acc[open] summary{border-bottom:1px solid var(--border);} .cq-acc .cq-line{padding:9px 16px;} .cq-acc .cq-note{padding:0 16px 10px;}
   .cq-skel i{display:block;height:86px;margin-top:12px;border-radius:16px;background:var(--panel);animation:cqpulse 1.2s ease-in-out infinite;} @keyframes cqpulse{50%{opacity:.45;}}
-  @media (min-width:720px){#chequeView{max-width:760px;margin-left:auto;margin-right:auto;} .cq-form.wide{grid-template-columns:repeat(3,1fr);}}
+  @media (min-width:900px){
+    .cq-ov{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start;}
+    .cq-ov > *{margin-top:0 !important;margin-bottom:0 !important;}
+    .cq-ov > .cq-stats{grid-column:1/-1;grid-template-columns:1.5fr 1fr 1fr 1fr;} .cq-ov > .bk-grid{grid-column:1/-1;}
+    .cq-ov > .cq-days{grid-column:1;grid-row:3/5;} .cq-ov > .cq-yr{grid-column:2;grid-row:3;} .cq-ov > .cq-sup{grid-column:2;grid-row:4;}
+  }
+  @media (min-width:720px){#chequeView{max-width:1080px;margin-left:auto;margin-right:auto;} .cq-form.wide{grid-template-columns:repeat(3,1fr);}}
   @media (prefers-reduced-motion:reduce){.cq-ref.spin svg,.cq-skel i{animation:none;}}
   .lg-seg{display:inline-flex;gap:4px;padding:4px;background:var(--track-bg);border:1px solid var(--border);border-radius:13px;}
   .lg-seg button{
@@ -1160,6 +1166,11 @@
   }
   :root[data-theme="light"] .combo-opt mark{background:rgba(226,180,58,.4);}
 
+  @media (min-width:1000px){
+    .pu-two{display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start;}
+    .pu-two .sec-head{margin-top:44px;}
+    #dashView .chart{height:170px;}
+  }
   /* ---------- Glass ---------- */
   :root{--glass:color-mix(in srgb,var(--panel-solid) 58%,transparent);--glass-in:rgba(255,255,255,.07);--glass-edge:rgba(255,255,255,.2);--glass-hi:rgba(255,255,255,.32);}
   :root[data-theme="light"]{--glass:color-mix(in srgb,var(--panel-solid) 72%,transparent);--glass-in:rgba(255,255,255,.55);--glass-edge:rgba(255,255,255,.75);--glass-hi:rgba(255,255,255,.95);}
@@ -1328,6 +1339,8 @@
     <div class="chart-labels" id="chartLabels" aria-hidden="true"></div>
   </section>
 
+<div class="pu-two">
+<div class="pu-col">
   <div class="sec-head"><div><div class="sec-title">Top 5 Suppliers</div><div class="sec-sub">By total purchase value</div></div></div>
   <section class="card" id="topSuppliersPanel" aria-label="Top suppliers">
     <div class="chips" id="topChips">
@@ -1346,6 +1359,8 @@
     <div id="topList"><div class="empty">Loading&hellip;</div></div>
   </section>
 
+</div>
+<div class="pu-col">
   <!-- Finder -->
   <div class="sec-head"><div><div class="sec-title">Quick Finder</div><div class="sec-sub">Totals by date range and supplier</div></div></div>
   <section class="card finder-card" aria-label="Quick finder">
@@ -1381,6 +1396,9 @@
       </div>
     </div>
   </section>
+
+</div>
+</div>
 
   <button id="openSupBtn" class="sup-cta" type="button">
     <span class="sup-cta-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg></span>
