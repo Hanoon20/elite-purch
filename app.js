@@ -2221,9 +2221,48 @@ $("billDate").min = `${LEDGER_YEAR}-01-01`;
 $("billDate").max = `${LEDGER_YEAR}-12-31`;
 $("signOutBtn").addEventListener("click", e => { e.stopPropagation(); signOut(); });
  
+
+// ---- Morning cheque alerts (phone notification, only for PUSH_EMAIL) ----
+const PUSH_EMAIL = "hanoonelite@gmail.com";
+const PUSH_PUBLIC_KEY = "BKZCN9Rbasaid6J6wosCooSAvZxRc5GmR6QJAIy6X_Gx1ayQTnry-UJfVG1ivvMYp30dDk2BqAEeHPH9TEbOq-g";
+const pushOk = () => "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+const u8FromB64u = s => { const p = "=".repeat((4 - s.length % 4) % 4), b = atob((s + p).replace(/-/g, "+").replace(/_/g, "/")); return Uint8Array.from(b, c => c.charCodeAt(0)); };
+async function pushSub(){ try{ const r = await navigator.serviceWorker.ready; return await r.pushManager.getSubscription(); }catch(e){ return null; } }
+async function pushRefreshUi(){
+  const b = $("alertsMenuBtn"), t = $("alertsTestBtn"); if(!b || !t) return;
+  const mine = pushOk() && !!currentUserEmail && currentUserEmail.toLowerCase() === PUSH_EMAIL;
+  b.hidden = !mine; if(!mine){ t.hidden = true; return; }
+  const on = !!(await pushSub()) && Notification.permission === "granted";
+  const blocked = Notification.permission === "denied";
+  b.querySelector(".mi-tx").textContent = blocked ? "Alerts blocked in browser settings" : on ? "Morning cheque alerts: ON" : "Morning cheque alerts";
+  b.setAttribute("aria-checked", String(on)); b.disabled = blocked; t.hidden = !on;
+}
+async function pushToggle(){
+  try{
+    const sub = await pushSub();
+    if(sub){
+      await logCall({ action: "push_off", endpoint: sub.endpoint }); await sub.unsubscribe();
+      toast("Morning alerts are off"); return;
+    }
+    const perm = await Notification.requestPermission();
+    if(perm !== "granted"){ toast("Please allow notifications to get the morning alert", "error"); return; }
+    const reg = await navigator.serviceWorker.ready;
+    const s = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: u8FromB64u(PUSH_PUBLIC_KEY) });
+    const res = await logCall({ action: "push_sub", sub: s.toJSON() });
+    if(!res || !res.ok){ await s.unsubscribe(); toast(res && res.error === "not_allowed" ? "Alerts are not enabled for this login" : "Could not switch alerts on. Try again.", "error"); return; }
+    toast("Morning alerts are on");
+  }catch(e){ toast("This phone could not switch alerts on", "error"); }
+  finally{ pushRefreshUi(); }
+}
+async function pushTest(){
+  const res = await logCall({ action: "push_test" });
+  toast(res && res.ok ? (res.sent ? "Test alert sent. It should arrive in a few seconds." : "Server could not reach this phone (codes " + ((res.codes || []).join(", ") || "none") + ")") : "Test failed", res && res.ok && res.sent ? undefined : "error");
+}
+
 const avatar = $("avatar"), menu = $("accountMenu");
 function toggleMenu(open){
   menu.classList.toggle("open", open);
+  if(open) pushRefreshUi();
   avatar.setAttribute("aria-expanded", String(open));
 }
 avatar.addEventListener("click", e => { if(!menu.contains(e.target)) toggleMenu(!menu.classList.contains("open")); });
@@ -2296,6 +2335,8 @@ function dismissBanner(){
  
 window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); installPrompt = e; showInstallOptions(); });
 window.addEventListener("appinstalled", () => { installPrompt = null; showInstallOptions(); toast("Elite Ledger installed ✓", "success"); });
+$("alertsMenuBtn").addEventListener("click", () => pushToggle());
+$("alertsTestBtn").addEventListener("click", () => { toggleMenu(false); pushTest(); });
 ["installMenuBtn", "installLockBtn", "installBannerBtn"].forEach(id => $(id).addEventListener("click", () => { toggleMenu(false); installApp(); }));
 $("installBannerClose").addEventListener("click", dismissBanner);
 $("iosClose").addEventListener("click", () => $("iosDialog").close());
