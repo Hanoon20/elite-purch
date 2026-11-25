@@ -1685,6 +1685,19 @@ function cqIssues(){
 // Realized section: tick the cheques that passed in the bank statement.
 // Ticking writes P (passed) to column Q of the Chq Rgstr tab, un-ticking writes O.
 // ---------------------------------------------------------------------------
+const RZ_IC = {
+  pend: `<svg viewBox="0 0 48 48" aria-hidden="true"><defs><linearGradient id="rhG" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFE9A3"/><stop offset=".55" stop-color="#E8B730"/><stop offset="1" stop-color="#A9780A"/></linearGradient><linearGradient id="rhS" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFD66B"/><stop offset="1" stop-color="#E0902A"/></linearGradient></defs>
+    <ellipse cx="24" cy="44.5" rx="12" ry="2" fill="#000" opacity=".28"/><path d="M13 9h22c0 9-5 12-8 15 3 3 8 6 8 15H13c0-9 5-12 8-15-3-3-8-6-8-15z" fill="#CFE3F5" fill-opacity=".34" stroke="#fff" stroke-opacity=".55" stroke-width="1.2" stroke-linejoin="round"/>
+    <path d="M16 11h16c-.6 5-3.6 7.6-8 10-4.4-2.4-7.4-5-8-10z" fill="url(#rhS)"/><path d="M24 25l6.5 11.5c.4.9-.1 1.5-1 1.5H18.5c-.9 0-1.4-.6-1-1.5z" fill="url(#rhS)"/>
+    <rect x="10" y="5.5" width="28" height="5" rx="2.5" fill="url(#rhG)"/><rect x="10" y="38.5" width="28" height="5" rx="2.5" fill="url(#rhG)"/><path d="M15 15c0 4 2 6 4 8" stroke="#fff" stroke-opacity=".6" stroke-width="1.4" stroke-linecap="round" fill="none"/></svg>`,
+  due: `<svg viewBox="0 0 48 48" aria-hidden="true"><defs><linearGradient id="rdR" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FF9B7A"/><stop offset="1" stop-color="#D8412A"/></linearGradient><linearGradient id="rdF" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#E6E9EE"/></linearGradient></defs>
+    <ellipse cx="24" cy="44.5" rx="13" ry="2" fill="#000" opacity=".28"/><circle cx="11" cy="11" r="5.5" fill="url(#rdR)"/><circle cx="37" cy="11" r="5.5" fill="url(#rdR)"/>
+    <circle cx="24" cy="26" r="17.5" fill="url(#rdR)"/><circle cx="24" cy="26" r="13.5" fill="url(#rdF)"/><circle cx="24" cy="26" r="13.5" fill="none" stroke="#B23520" stroke-opacity=".35"/>
+    <path d="M24 17.5V26l6 3.5" stroke="#C93A24" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/><circle cx="24" cy="26" r="1.8" fill="#C93A24"/><path d="M14 16c2-2.4 4.6-3.8 7.4-4.2" stroke="#fff" stroke-opacity=".7" stroke-width="1.6" stroke-linecap="round" fill="none"/></svg>`,
+  ok: `<svg viewBox="0 0 48 48" aria-hidden="true"><defs><linearGradient id="roG" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#8CF0BC"/><stop offset=".55" stop-color="#34B877"/><stop offset="1" stop-color="#17804F"/></linearGradient></defs>
+    <ellipse cx="24" cy="44.5" rx="13" ry="2" fill="#000" opacity=".28"/><path d="M24 4l16 6v12c0 10-6.8 17-16 21C14.800 39 8 32 8 22V10z" fill="#0F5E3A"/><path d="M24 2.500l16 6v12c0 10-6.800 17-16 21C14.800 37.500 8 30.500 8 20.500v-12z" fill="url(#roG)"/>
+    <path d="M24 2.500l16 6v3L24 5.500 8 11.500v-3z" fill="#fff" opacity=".4"/><path d="M15.500 21.500l6 6 11-12" stroke="#fff" stroke-width="4.200" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>`
+};
 let rz = { st: "pending", bank: "", month: "", q: "" };
 const rzPassed = c => String(c.rs || "").trim().toUpperCase() === "P";
 function rzAll(){
@@ -1714,19 +1727,25 @@ function rzRender(){
     (!q || (c.g.sup + " " + c.no + " " + c.bank).toLowerCase().includes(q)));
   const pend = base.filter(c => !rzPassed(c)), pass = base.filter(rzPassed), due = pend.filter(c => c.date != null && c.date <= t0);
   const tot = l => l.reduce((s, c) => s + (c.amt || 0), 0);
-  const card = (cls, l, n, v) => `<div class="rz-card ${cls}"><span>${l}</span><b>${rs(v)}</b><em>${fmtInt(n)} cheque${n === 1 ? "" : "s"}</em></div>`;
-  sum.innerHTML = card("pend", "Pending", pend.length, tot(pend)) + card("due", "Due now", due.length, tot(due)) + card("ok", "Passed", pass.length, tot(pass));
+  const card = (cls, l, n, v) => `<div class="rz-card ${cls}"><i class="rz-ic">${RZ_IC[cls]}</i><span>${l}</span><b>${rs(v)}</b><em>${fmtInt(n)} cheque${n === 1 ? "" : "s"}</em></div>`;
+  const tp = tot(pend), tk = tot(pass), pct = tp + tk > 0 ? Math.round(tk / (tp + tk) * 100) : 0, C = 2 * Math.PI * 34;
+  sum.innerHTML = `<div class="rz-hero"><div class="rz-ring"><svg viewBox="0 0 80 80" aria-hidden="true"><defs><linearGradient id="rzRg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#8CF0BC"/><stop offset="1" stop-color="#2FA971"/></linearGradient></defs><circle cx="40" cy="40" r="34" class="rz-trk"/><circle cx="40" cy="40" r="34" class="rz-prg" stroke-dasharray="${(C * pct / 100).toFixed(1)} ${C.toFixed(1)}" transform="rotate(-90 40 40)"/></svg><b>${pct}%</b></div>
+    <div class="rz-hl"><span>Realized in bank</span><strong>${rs(tk)}</strong><em>${tp > 0 ? rs(tp) + " still pending" : "All cheques realized"}${due.length ? ` · <u>${fmtInt(due.length)} overdue</u>` : ""}</em></div></div>
+    <div class="rz-cards">${card("pend", "Pending", pend.length, tp)}${card("due", "Due now", due.length, tot(due))}${card("ok", "Passed", pass.length, tk)}</div>`;
   let list = rz.st === "pending" ? pend : rz.st === "due" ? due : rz.st === "passed" ? pass : base;
-  list = list.slice().sort((x, y) => rz.st === "passed" ? (y.date || 0) - (x.date || 0) : (x.date == null) - (y.date == null) || (x.date || 0) - (y.date || 0));
-  if(!list.length){ res.innerHTML = '<div class="empty">Nothing here.</div>'; return; }
+  // order: today and past dates first, newest first (yesterday on top), then upcoming dates, nearest first, then undated
+  const grp = c => c.date == null ? 2 : c.date <= t0 ? 0 : 1;
+  list = list.slice().sort((x, y) => grp(x) - grp(y) || (grp(x) === 1 ? x.date - y.date : (y.date || 0) - (x.date || 0)));
+  if(!list.length){ res.innerHTML = `<div class="rz-empty"><i>${RZ_IC.ok}</i><b>${rz.st === "pending" || rz.st === "due" ? "All caught up" : "Nothing here"}</b><span>${rz.st === "pending" || rz.st === "due" ? "No cheques waiting for the bank statement." : "Try another filter."}</span></div>`; return; }
   const shown = list.slice(0, 120);
   let lastKey = "", h = "";
   shown.forEach(c => {
-    const k = c.date == null ? "No date" : new Date(c.date).toLocaleDateString("en-GB", { month: "long", year: "numeric" });
-    if(k !== lastKey){ lastKey = k; h += `<div class="rz-mh">${k}</div>`; }
+    const gp = c.date == null ? 2 : c.date <= t0 ? 0 : 1;
+    const k = gp + "|" + (c.date == null ? "No date" : new Date(c.date).toLocaleDateString("en-GB", { month: "long", year: "numeric" }));
+    if(k !== lastKey){ lastKey = k; h += `<div class="rz-mh">${gp === 1 ? "Upcoming · " : ""}${k.split("|")[1]}</div>`; }
     const p = rzPassed(c), od = !p && c.date != null && c.date <= t0, days = od ? Math.round((t0 - c.date) / DAY) : 0;
     h += `<label class="rz-row${p ? " done" : ""}${od ? " over" : ""}${c.busy ? " busy" : ""}"><input type="checkbox" class="rz-in" data-rzrow="${c.row}"${p ? " checked" : ""}${c.busy ? " disabled" : ""} aria-label="Passed in bank"><span class="rz-box" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>
-      <span class="rz-main"><b>${esc(c.g.sup)}</b><em>#${esc(c.no)}${c.bank ? " · " + esc(c.bank) : ""}</em><small>${c.date != null ? fmtDW(c.date) + " " + new Date(c.date).getFullYear() : "No cheque date"}${od ? ` · <span class="rz-late">${days === 0 ? "due today" : days + " day" + (days > 1 ? "s" : "") + " ago"}</span>` : ""}</small></span>
+      <span class="rz-main"><b>${esc(c.g.sup)}</b><em>#${esc(c.no)}${c.bank ? ` <i class="rz-bank ${bankKey(c.bank)}">${esc((BANK_THEME[bankKey(c.bank)] || { n: c.bank }).n.replace(" Bank", ""))}</i>` : ""}</em><small>${c.date != null ? fmtDW(c.date) + " " + new Date(c.date).getFullYear() : "No cheque date"}${od ? ` · <span class="rz-late">${days === 0 ? "due today" : days + " day" + (days > 1 ? "s" : "") + " ago"}</span>` : ""}</small></span>
       <span class="rz-amt">${rs(c.amt)}</span></label>`;
   });
   if(list.length > shown.length) h += `<p class="cq-note">Showing the first ${shown.length} of ${fmtInt(list.length)}. Use search, bank or month to narrow down.</p>`;
