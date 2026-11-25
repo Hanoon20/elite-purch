@@ -1749,7 +1749,7 @@ function rzRender(){
   const tp = tot(pend), tk = tot(pass), pct = tp + tk > 0 ? Math.round(tk / (tp + tk) * 100) : 0, C = 2 * Math.PI * 34;
   sum.innerHTML = `<div class="rz-hero"><div class="rz-ring"><svg viewBox="0 0 80 80" aria-hidden="true"><defs><linearGradient id="rzRg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#8CF0BC"/><stop offset="1" stop-color="#2FA971"/></linearGradient></defs><circle cx="40" cy="40" r="34" class="rz-trk"/><circle cx="40" cy="40" r="34" class="rz-prg" stroke-dasharray="${(C * pct / 100).toFixed(1)} ${C.toFixed(1)}" transform="rotate(-90 40 40)"/></svg><b>${pct}%</b></div>
     <div class="rz-hl"><span>Realized in bank</span><strong>${rs(tk)}</strong><em>${tp > 0 ? rs(tp) + " still pending" : "All cheques realized"}${due.length ? ` · <u>${fmtInt(due.length)} overdue</u>` : ""}</em></div></div>
-    <div class="rz-cards">${card("pend", "Pending", pend.length, tp, "Written cheques not yet seen in the bank statement. Tick them once they clear.")}${card("ok", "Passed", pass.length, tk, "Cleared in the bank statement. Saved as P in the Chq Rgstr sheet.")}</div>`;
+    <div class="rz-cards">${card("pend", "Pending", pend.length, tp, "Tick them once they clear.")}${card("ok", "Passed", pass.length, tk, "Cleared in the bank statement.")}</div>`;
   let list = rz.st === "pending" ? pend : rz.st === "due" ? due : rz.st === "passed" ? pass : base;
   // order: today and past dates first, newest first (yesterday on top), then upcoming dates, nearest first, then undated
   const grp = c => c.date == null ? 2 : c.date <= t0 ? 0 : 1;
