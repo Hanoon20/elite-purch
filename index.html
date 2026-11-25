@@ -922,6 +922,23 @@
   .md-inv-s{margin-top:3px;font-size:11.5px;color:var(--muted);} .md-inv-d{margin-top:3px;font-size:11.5px;color:var(--text-2);}
   .md-inv-d .late{color:var(--err-text,#F2707A);font-weight:700;} .md-inv-d .ok{color:var(--ok-text,#34D399);font-weight:700;}
   .md-kvs-s{margin-top:8px;} .md-kvs-s .md-kv{padding:10px 14px;font-size:12.5px;}
+  /* Realized (tick passed cheques) */
+  .rz-sum{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px;}
+  .rz-card{padding:11px 12px;border-radius:16px;background:var(--panel);border:1px solid var(--border);display:flex;flex-direction:column;gap:2px;min-width:0;container-type:inline-size;}
+  .rz-card span{font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.04em;text-transform:uppercase;}
+  .rz-card b{font:700 clamp(13px,9cqi,19px) var(--num,inherit);white-space:nowrap;}
+  .rz-card em{font-style:normal;font-size:11px;color:var(--muted);}
+  .rz-card.pend b{color:var(--brand);} .rz-card.due{border-color:rgba(240,120,90,.45);} .rz-card.due b{color:#F0785A;} .rz-card.ok b{color:#4FC48A;}
+  .rz-mh{margin:16px 2px 8px;font:700 12px var(--display);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);}
+  .rz-row{display:flex;align-items:center;gap:12px;padding:11px 12px;margin-bottom:8px;border-radius:16px;background:var(--panel);border:1px solid var(--border);cursor:pointer;transition:background .2s ease,border-color .2s ease,opacity .2s ease;-webkit-tap-highlight-color:transparent;}
+  .rz-row.over{border-left:3px solid #F0785A;} .rz-row.done{background:linear-gradient(90deg,rgba(79,196,138,.14),transparent 70%),var(--panel);border-color:rgba(79,196,138,.4);}
+  .rz-row.busy{opacity:.55;pointer-events:none;} .rz-in{position:absolute;opacity:0;pointer-events:none;}
+  .rz-box{flex:none;width:28px;height:28px;border-radius:9px;border:2px solid var(--border-strong);display:grid;place-items:center;color:transparent;transition:all .22s cubic-bezier(.3,.9,.3,1.3);}
+  .rz-box svg{width:17px;height:17px;transform:scale(.4);transition:transform .25s cubic-bezier(.3,.9,.3,1.5);}
+  .rz-in:checked + .rz-box{background:linear-gradient(135deg,#5FD8A0,#2FA971);border-color:transparent;color:#06281A;box-shadow:0 4px 12px -4px rgba(47,169,113,.7);} .rz-in:checked + .rz-box svg{transform:scale(1);}
+  .rz-in:focus-visible + .rz-box{outline:2px solid var(--brand);outline-offset:2px;}
+  .rz-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px;} .rz-main b{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;} .rz-main em{font-style:normal;font-size:12px;color:var(--muted);} .rz-main small{font-size:11.5px;color:var(--muted);} .rz-late{color:#F0785A;font-weight:700;}
+  .rz-amt{flex:none;font:700 14px var(--num,inherit);white-space:nowrap;}
   /* page transitions + cheque intro */
   .pg-r{animation:pgr .42s cubic-bezier(.2,.8,.2,1);} .pg-l{animation:pgl .42s cubic-bezier(.2,.8,.2,1);}
   @keyframes pgr{from{opacity:0;transform:translateX(28px);}} @keyframes pgl{from{opacity:0;transform:translateX(-28px);}}
@@ -1420,7 +1437,7 @@
       <button type="button" role="tab" data-t="overview" aria-selected="true">Overview</button>
       <button type="button" role="tab" data-t="finder" aria-selected="false">Finder</button>
       <button type="button" role="tab" data-t="calendar" aria-selected="false">Calendar</button>
-      <button type="button" role="tab" data-t="issues" aria-selected="false">Checks</button>
+      <button type="button" role="tab" data-t="realized" aria-selected="false">Realized</button>
     </div>
     <div class="cq-meta"><span id="cqUpdated">Cheque sheet</span>
       <button id="cqRefresh" class="cq-ref" type="button" aria-label="Refresh cheque data"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg>Refresh</button></div>
