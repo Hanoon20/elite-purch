@@ -1725,9 +1725,10 @@ function rzView(){
   if(!CHQ.reg || !CHQ.regTab) return '<div class="cq-alert bad"><b>Chq Rgstr tab not found</b><span>The first tab of the cheque sheet must be named "Chq Rgstr".</span></div>';
   const all = rzAll();
   const banks = [...new Set(all.map(c => c.bank).filter(Boolean))].sort();
-  const months = [...new Set(all.filter(c => c.date != null).map(c => rzMonthKey(c.date)))].sort().reverse();
+  const nowKey = rzMonthKey(todayMs());   // only the current month and months already gone
+  const months = [...new Set(all.filter(c => c.date != null).map(c => rzMonthKey(c.date)))].filter(k => k <= nowKey).sort().reverse();
   const mName = k => { const [y, m] = k.split("-").map(Number); return new Date(y, m - 1, 1).toLocaleDateString("en-GB", { month: "short", year: "numeric" }); };
-  const chips = [["pending", "Pending"], ["due", "Due now"], ["passed", "Passed"], ["all", "All"]];
+  const chips = [["pending", "Pending"], ["passed", "Passed"], ["all", "All"]];
   const ic = '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="9" cy="9" r="5.5"/><path d="M13.2 13.2L17 17"/></svg>';
   return `<div id="rzSum" class="rz-sum"></div>
   <div class="rz-filters">
@@ -1750,11 +1751,11 @@ function rzRender(){
   sum.innerHTML = `<div class="rz-hero"><div class="rz-ring"><svg viewBox="0 0 80 80" aria-hidden="true"><defs><linearGradient id="rzRg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#8CF0BC"/><stop offset="1" stop-color="#2FA971"/></linearGradient></defs><circle cx="40" cy="40" r="34" class="rz-trk"/><circle cx="40" cy="40" r="34" class="rz-prg" stroke-dasharray="${(C * pct / 100).toFixed(1)} ${C.toFixed(1)}" transform="rotate(-90 40 40)"/></svg><b>${pct}%</b></div>
     <div class="rz-hl"><span>Realized in bank</span><strong>${rs(tk)}</strong><em>${tp > 0 ? rs(tp) + " still pending" : "All cheques realized"}${due.length ? ` · <u>${fmtInt(due.length)} overdue</u>` : ""}</em></div></div>
     <div class="rz-cards">${card("pend", "Pending", pend.length, tp, "Tick them once they clear.")}${card("ok", "Passed", pass.length, tk, "Cleared in the bank statement.")}</div>`;
-  let list = rz.st === "pending" ? pend : rz.st === "due" ? due : rz.st === "passed" ? pass : base;
+  let list = rz.st === "pending" ? pend : rz.st === "passed" ? pass : base;
   // order: today and past dates first, newest first (yesterday on top), then upcoming dates, nearest first, then undated
   const grp = c => c.date == null ? 2 : c.date <= t0 ? 0 : 1;
   list = list.slice().sort((x, y) => grp(x) - grp(y) || (grp(x) === 1 ? x.date - y.date : (y.date || 0) - (x.date || 0)));
-  if(!list.length){ res.innerHTML = `<div class="rz-empty"><i>${RZ_IC.ok}</i><b>${rz.st === "pending" || rz.st === "due" ? "All caught up" : "Nothing here"}</b><span>${rz.st === "pending" || rz.st === "due" ? "No cheques waiting for the bank statement." : "Try another filter."}</span></div>`; return; }
+  if(!list.length){ res.innerHTML = `<div class="rz-empty"><i>${RZ_IC.ok}</i><b>${rz.st === "pending" ? "All caught up" : "Nothing here"}</b><span>${rz.st === "pending" ? "No cheques waiting for the bank statement." : "Try another filter."}</span></div>`; return; }
   const shown = list.slice(0, 120);
   let lastKey = "", h = "";
   shown.forEach(c => {
