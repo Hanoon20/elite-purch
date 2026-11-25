@@ -1471,6 +1471,13 @@ function cqIntro(){
   b.classList.remove("anim"); void b.offsetWidth; b.classList.add("anim");
   countUp(b); clearTimeout(cqIntro.t); cqIntro.t = setTimeout(() => b.classList.remove("anim"), 1800);
 }
+function cqHero(mname, month, left){
+  const tot = sumA(month), rest = sumA(left), done = tot - rest, pct = tot > 0 ? Math.round(done / tot * 100) : 0, C = 2 * Math.PI * 34;
+  const dim = new Date(new Date(todayMs()).getFullYear(), new Date(todayMs()).getMonth() + 1, 0).getDate(), day = new Date(todayMs()).getDate();
+  return `<div class="cq-hero"><div class="cq-hr"><svg viewBox="0 0 80 80" aria-hidden="true"><defs><linearGradient id="cqHg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFE29A"/><stop offset="1" stop-color="#E2B43A"/></linearGradient></defs><circle cx="40" cy="40" r="34" class="cq-hrt"/><circle cx="40" cy="40" r="34" class="cq-hrp" stroke-dasharray="${(C * pct / 100).toFixed(1)} ${C.toFixed(1)}" transform="rotate(-90 40 40)"/></svg><b>${pct}%</b><small>cleared</small></div>
+    <div class="cq-hm"><span>${esc(mname)}</span><strong><i data-n="${tot}">${rs(tot)}</i></strong><em>${month.length} cheques · day ${day} of ${dim}</em></div>
+    <div class="cq-hf"><div class="p"><u></u><span>Passed</span><b>${rs(done)}</b></div><div class="u"><u></u><span>Upcoming</span><b>${rs(rest)}</b></div></div></div>`;
+}
 function cqOverview(){
   const { recs } = CHQ, t0 = todayMs(), n = new Date(t0);
   const ms = new Date(n.getFullYear(), n.getMonth(), 1).getTime(), me = new Date(n.getFullYear(), n.getMonth() + 1, 1).getTime();
@@ -1491,7 +1498,7 @@ function cqOverview(){
   const top = [...sup.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6), tmx = top.length ? top[0][1] : 1;
   const mname = n.toLocaleDateString("en-GB", { month: "long", year: "numeric" });
   return `<div class="cq-ov"><div class="sv-stats cq-stats">
-    ${stat(mname, `<span data-n="${sumA(month)}">${rs(sumA(month))}</span>`, `${month.length} cheques · ${rs(sumA(left))} still to clear`, true)}
+    ${cqHero(mname, month, left)}
     ${stat("Today", fmtCompact(sumA(today)), today.length + " cheques")}
     ${stat("Next 7 days", fmtCompact(sumA(w7)), w7.length + " cheques")}
     ${stat("All upcoming", fmtCompact(sumA(up)), up.length + " cheques")}</div>
@@ -1702,7 +1709,15 @@ let rz = { st: "pending", bank: "", month: "", q: "" };
 const rzPassed = c => String(c.rs || "").trim().toUpperCase() === "P";
 function rzAll(){
   const out = [];
-  if(CHQ && CHQ.reg) CHQ.reg.groups.forEach(g => g.chq.forEach(c => { if(c.no && c.amt != null) out.push(c); }));
+  if(!CHQ || !CHQ.reg) return out;
+  // some register rows have no bank: take it from the month tabs (same cheque no., amount first)
+  const bm = new Map();
+  CHQ.recs.forEach(r => { if(r.no && r.bank){ const k = String(r.no); if(!bm.has(k)) bm.set(k, []); bm.get(k).push(r); } });
+  CHQ.reg.groups.forEach(g => g.chq.forEach(c => {
+    if(!c.no || c.amt == null) return;
+    if(!c.bank){ const l = bm.get(c.no); if(l && l.length){ const e = l.find(r => r.a === c.amt) || l[0]; c.bank = e.bank; c.bankFrom = "tab"; } }
+    out.push(c);
+  }));
   return out;
 }
 const rzMonthKey = ms => { const d = new Date(ms); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0"); };
@@ -1713,10 +1728,13 @@ function rzView(){
   const months = [...new Set(all.filter(c => c.date != null).map(c => rzMonthKey(c.date)))].sort().reverse();
   const mName = k => { const [y, m] = k.split("-").map(Number); return new Date(y, m - 1, 1).toLocaleDateString("en-GB", { month: "short", year: "numeric" }); };
   const chips = [["pending", "Pending"], ["due", "Due now"], ["passed", "Passed"], ["all", "All"]];
+  const ic = '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="9" cy="9" r="5.5"/><path d="M13.2 13.2L17 17"/></svg>';
   return `<div id="rzSum" class="rz-sum"></div>
-  <div class="cq-search"><input type="search" id="rzQ" class="cq-in" placeholder="Search supplier / no." value="${esc(rz.q)}" aria-label="Search">
-    <select id="rzBank" class="cq-in cq-banksel" aria-label="Bank"><option value="">All banks</option>${banks.map(b => `<option value="${esc(b)}"${rz.bank === b ? " selected" : ""}>${esc(b)}</option>`).join("")}</select></div>
-  <div class="cq-search"><select id="rzMonth" class="cq-in" aria-label="Month"><option value="">All months</option>${months.map(k => `<option value="${k}"${rz.month === k ? " selected" : ""}>${mName(k)}</option>`).join("")}</select></div>
+  <div class="rz-filters">
+    <label class="rz-search">${ic}<input type="search" id="rzQ" placeholder="Search supplier, cheque no. or bank" value="${esc(rz.q)}" aria-label="Search" autocomplete="off"></label>
+    <label class="rz-fld"><span>Bank</span><select id="rzBank" aria-label="Bank"><option value="">All banks</option>${banks.map(b => `<option value="${esc(b)}"${rz.bank === b ? " selected" : ""}>${esc(b)}</option>`).join("")}</select></label>
+    <label class="rz-fld"><span>Month</span><select id="rzMonth" aria-label="Month"><option value="">All months</option>${months.map(k => `<option value="${k}"${rz.month === k ? " selected" : ""}>${mName(k)}</option>`).join("")}</select></label>
+  </div>
   <div class="cq-chips" id="rzChips" role="group" aria-label="Status">${chips.map(([k, l]) => `<button type="button" class="chip${rz.st === k ? " active" : ""}" data-rzs="${k}">${l}</button>`).join("")}</div>
   <div id="rzRes"></div>`;
 }
@@ -1727,11 +1745,11 @@ function rzRender(){
     (!q || (c.g.sup + " " + c.no + " " + c.bank).toLowerCase().includes(q)));
   const pend = base.filter(c => !rzPassed(c)), pass = base.filter(rzPassed), due = pend.filter(c => c.date != null && c.date <= t0);
   const tot = l => l.reduce((s, c) => s + (c.amt || 0), 0);
-  const card = (cls, l, n, v) => `<div class="rz-card ${cls}"><i class="rz-ic">${RZ_IC[cls]}</i><span>${l}</span><b>${rs(v)}</b><em>${fmtInt(n)} cheque${n === 1 ? "" : "s"}</em></div>`;
+  const card = (cls, l, n, v, note) => `<div class="rz-card ${cls}"><i class="rz-ic">${RZ_IC[cls]}</i><span>${l}</span><b>${rs(v)}</b><em>${fmtInt(n)} cheque${n === 1 ? "" : "s"}</em><p>${note}</p></div>`;
   const tp = tot(pend), tk = tot(pass), pct = tp + tk > 0 ? Math.round(tk / (tp + tk) * 100) : 0, C = 2 * Math.PI * 34;
   sum.innerHTML = `<div class="rz-hero"><div class="rz-ring"><svg viewBox="0 0 80 80" aria-hidden="true"><defs><linearGradient id="rzRg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#8CF0BC"/><stop offset="1" stop-color="#2FA971"/></linearGradient></defs><circle cx="40" cy="40" r="34" class="rz-trk"/><circle cx="40" cy="40" r="34" class="rz-prg" stroke-dasharray="${(C * pct / 100).toFixed(1)} ${C.toFixed(1)}" transform="rotate(-90 40 40)"/></svg><b>${pct}%</b></div>
     <div class="rz-hl"><span>Realized in bank</span><strong>${rs(tk)}</strong><em>${tp > 0 ? rs(tp) + " still pending" : "All cheques realized"}${due.length ? ` · <u>${fmtInt(due.length)} overdue</u>` : ""}</em></div></div>
-    <div class="rz-cards">${card("pend", "Pending", pend.length, tp)}${card("due", "Due now", due.length, tot(due))}${card("ok", "Passed", pass.length, tk)}</div>`;
+    <div class="rz-cards">${card("pend", "Pending", pend.length, tp, "Written cheques not yet seen in the bank statement. Tick them once they clear.")}${card("ok", "Passed", pass.length, tk, "Cleared in the bank statement. Saved as P in the Chq Rgstr sheet.")}</div>`;
   let list = rz.st === "pending" ? pend : rz.st === "due" ? due : rz.st === "passed" ? pass : base;
   // order: today and past dates first, newest first (yesterday on top), then upcoming dates, nearest first, then undated
   const grp = c => c.date == null ? 2 : c.date <= t0 ? 0 : 1;
