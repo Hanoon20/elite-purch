@@ -271,9 +271,9 @@ function parseRows(rows, k, out){
  
 class HttpError extends Error{ constructor(status, detail){ super(detail || "HTTP " + status); this.status = status; this.detail = detail || ""; } }
  
-async function api(url, body){
+async function api(url, body, method){
   const opts = { headers: { Authorization: `Bearer ${accessToken}` }, referrerPolicy: "no-referrer", cache: "no-store" };
-  if(body){ opts.method = "POST"; opts.headers["Content-Type"] = "application/json"; opts.body = JSON.stringify(body); }
+  if(body){ opts.method = method || "POST"; opts.headers["Content-Type"] = "application/json"; opts.body = JSON.stringify(body); }
   const ctl = new AbortController();
   const timer = setTimeout(() => ctl.abort(), 25000);
   opts.signal = ctl.signal;
@@ -1370,7 +1370,7 @@ async function loadCheques(force){
     recs.forEach(r => { r.dd = r.d; });
     let reg = null;
     try{ if(regTab && data.valueRanges[tabs.length]) reg = parseRegister(data.valueRanges[tabs.length].values || []); }catch(e){ reg = null; }
-    CHQ = { recs, blocks, tabs, reg, at: Date.now(), banks: [...new Set(recs.map(r => r.bank))] };
+    CHQ = { recs, blocks, tabs, reg, regTab, at: Date.now(), banks: [...new Set(recs.map(r => r.bank))] };
   }catch(e){
     chqErr = e.status === 403 || e.status === 404
       ? "This Google account doesn't have access to the cheque sheet. Ask the owner to share it, then sign in again."
@@ -1680,6 +1680,92 @@ function cqIssues(){
   return h;
 }
 
+
+// ---------------------------------------------------------------------------
+// Realized section: tick the cheques that passed in the bank statement.
+// Ticking writes P (passed) to column Q of the Chq Rgstr tab, un-ticking writes O.
+// ---------------------------------------------------------------------------
+let rz = { st: "pending", bank: "", month: "", q: "" };
+const rzPassed = c => String(c.rs || "").trim().toUpperCase() === "P";
+function rzAll(){
+  const out = [];
+  if(CHQ && CHQ.reg) CHQ.reg.groups.forEach(g => g.chq.forEach(c => { if(c.no && c.amt != null) out.push(c); }));
+  return out;
+}
+const rzMonthKey = ms => { const d = new Date(ms); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0"); };
+function rzView(){
+  if(!CHQ.reg || !CHQ.regTab) return '<div class="cq-alert bad"><b>Chq Rgstr tab not found</b><span>The first tab of the cheque sheet must be named "Chq Rgstr".</span></div>';
+  const all = rzAll();
+  const banks = [...new Set(all.map(c => c.bank).filter(Boolean))].sort();
+  const months = [...new Set(all.filter(c => c.date != null).map(c => rzMonthKey(c.date)))].sort().reverse();
+  const mName = k => { const [y, m] = k.split("-").map(Number); return new Date(y, m - 1, 1).toLocaleDateString("en-GB", { month: "short", year: "numeric" }); };
+  const chips = [["pending", "Pending"], ["due", "Due now"], ["passed", "Passed"], ["all", "All"]];
+  return `<div id="rzSum" class="rz-sum"></div>
+  <div class="cq-search"><input type="search" id="rzQ" class="cq-in" placeholder="Search supplier / no." value="${esc(rz.q)}" aria-label="Search">
+    <select id="rzBank" class="cq-in cq-banksel" aria-label="Bank"><option value="">All banks</option>${banks.map(b => `<option value="${esc(b)}"${rz.bank === b ? " selected" : ""}>${esc(b)}</option>`).join("")}</select></div>
+  <div class="cq-search"><select id="rzMonth" class="cq-in" aria-label="Month"><option value="">All months</option>${months.map(k => `<option value="${k}"${rz.month === k ? " selected" : ""}>${mName(k)}</option>`).join("")}</select></div>
+  <div class="cq-chips" id="rzChips" role="group" aria-label="Status">${chips.map(([k, l]) => `<button type="button" class="chip${rz.st === k ? " active" : ""}" data-rzs="${k}">${l}</button>`).join("")}</div>
+  <div id="rzRes"></div>`;
+}
+function rzRender(){
+  const sum = $("rzSum"), res = $("rzRes"); if(!sum || !res) return;
+  const t0 = todayMs(), q = rz.q.trim().toLowerCase();
+  const base = rzAll().filter(c => (!rz.bank || c.bank === rz.bank) && (!rz.month || (c.date != null && rzMonthKey(c.date) === rz.month)) &&
+    (!q || (c.g.sup + " " + c.no + " " + c.bank).toLowerCase().includes(q)));
+  const pend = base.filter(c => !rzPassed(c)), pass = base.filter(rzPassed), due = pend.filter(c => c.date != null && c.date <= t0);
+  const tot = l => l.reduce((s, c) => s + (c.amt || 0), 0);
+  const card = (cls, l, n, v) => `<div class="rz-card ${cls}"><span>${l}</span><b>${rs(v)}</b><em>${fmtInt(n)} cheque${n === 1 ? "" : "s"}</em></div>`;
+  sum.innerHTML = card("pend", "Pending", pend.length, tot(pend)) + card("due", "Due now", due.length, tot(due)) + card("ok", "Passed", pass.length, tot(pass));
+  let list = rz.st === "pending" ? pend : rz.st === "due" ? due : rz.st === "passed" ? pass : base;
+  list = list.slice().sort((x, y) => rz.st === "passed" ? (y.date || 0) - (x.date || 0) : (x.date == null) - (y.date == null) || (x.date || 0) - (y.date || 0));
+  if(!list.length){ res.innerHTML = '<div class="empty">Nothing here.</div>'; return; }
+  const shown = list.slice(0, 120);
+  let lastKey = "", h = "";
+  shown.forEach(c => {
+    const k = c.date == null ? "No date" : new Date(c.date).toLocaleDateString("en-GB", { month: "long", year: "numeric" });
+    if(k !== lastKey){ lastKey = k; h += `<div class="rz-mh">${k}</div>`; }
+    const p = rzPassed(c), od = !p && c.date != null && c.date <= t0, days = od ? Math.round((t0 - c.date) / DAY) : 0;
+    h += `<label class="rz-row${p ? " done" : ""}${od ? " over" : ""}${c.busy ? " busy" : ""}"><input type="checkbox" class="rz-in" data-rzrow="${c.row}"${p ? " checked" : ""}${c.busy ? " disabled" : ""} aria-label="Passed in bank"><span class="rz-box" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>
+      <span class="rz-main"><b>${esc(c.g.sup)}</b><em>#${esc(c.no)}${c.bank ? " · " + esc(c.bank) : ""}</em><small>${c.date != null ? fmtDW(c.date) + " " + new Date(c.date).getFullYear() : "No cheque date"}${od ? ` · <span class="rz-late">${days === 0 ? "due today" : days + " day" + (days > 1 ? "s" : "") + " ago"}</span>` : ""}</small></span>
+      <span class="rz-amt">${rs(c.amt)}</span></label>`;
+  });
+  if(list.length > shown.length) h += `<p class="cq-note">Showing the first ${shown.length} of ${fmtInt(list.length)}. Use search, bank or month to narrow down.</p>`;
+  res.innerHTML = h;
+}
+async function rzSet(c, pass){
+  const val = pass ? "P" : "O", prev = c.rs;
+  let access = hasWriteScope() ? Promise.resolve() : requestWriteAccess();   // asked synchronously from the tap
+  c.busy = true; c.rs = val; rzRender();
+  try{
+    await access;
+    const base = `https://sheets.googleapis.com/v4/spreadsheets/${CHQ_SHEET_ID}/values/`;
+    const tab = "'" + CHQ.regTab + "'!";
+    // the row must still hold this cheque, otherwise someone has changed the sheet since it was loaded
+    const chk = await apiGet(`${base}${encodeURIComponent(tab + "M" + c.row)}?${API_OPTS}`);
+    const cur = chk.values && chk.values[0] ? String(chk.values[0][0]).trim() : "";
+    if(cur !== c.no){ c.rs = prev; toast("The sheet has changed. Refreshing, please tick again.", "error"); loadCheques(true); return; }
+    await api(`${base}${encodeURIComponent(tab + "Q" + c.row)}?valueInputOption=RAW`, { values: [[val]] }, "PUT");
+    toast(pass ? "Marked as passed" : "Marked as pending");
+  }catch(err){
+    c.rs = prev;
+    const code = err && err.status;
+    toast(err === "popup_closed" ? "Permission window closed. Nothing was changed."
+      : err === "scope_denied" || err === "access_denied" ? "Ticking needs permission to edit the Sheet. Tick the Google Sheets box when asked."
+      : err === "popup_failed_to_open" ? "Your browser blocked Google's permission window. Allow pop-ups and try again."
+      : code === 403 ? "You do not have edit access to the cheque sheet."
+      : "Could not save to the sheet. Please try again.", "error");
+  }finally{ c.busy = false; rzRender(); }
+}
+chqView.addEventListener("change", e => {
+  const t = e.target;
+  if(t.id === "rzBank"){ rz.bank = t.value; rzRender(); return; }
+  if(t.id === "rzMonth"){ rz.month = t.value; rzRender(); return; }
+  const r = t.closest && t.closest(".rz-in");
+  if(r){ const c = rzAll().find(x => String(x.row) === r.dataset.rzrow); if(c && !c.busy) rzSet(c, r.checked); else r.checked = !r.checked; }
+});
+chqView.addEventListener("input", e => { if(e.target.id === "rzQ"){ rz.q = e.target.value; rzRender(); } });
+chqView.addEventListener("click", e => { const b = e.target.closest && e.target.closest("[data-rzs]"); if(!b) return; rz.st = b.dataset.rzs; document.querySelectorAll("#rzChips .chip").forEach(x => x.classList.toggle("active", x === b)); rzRender(); });
+
 function renderCheques(){
   const body = $("cqBody");
   document.querySelectorAll("#cqSeg button").forEach(x => x.setAttribute("aria-selected", String(x.dataset.t === chqTab)));
@@ -1691,7 +1777,7 @@ function renderCheques(){
   if(chqTab === "overview") body.innerHTML = cqOverview();
   else if(chqTab === "finder"){ body.innerHTML = cqFinder(); cqRenderResults(); const ac = body.querySelector("#cqChips .chip.active"); if(ac && ac.scrollIntoView) ac.scrollIntoView({ inline: "center", block: "nearest" }); }
   else if(chqTab === "calendar") body.innerHTML = cqCalendar();
-  else body.innerHTML = cqIssues();
+  else { body.innerHTML = rzView(); rzRender(); }
   if(cqPlay){ cqPlay = false; cqIntro(); }
 }
 $("cqSeg").addEventListener("click", e => { const b = e.target.closest("button"); if(!b) return; chqTab = b.dataset.t; cqPlay = true; renderCheques(); window.scrollTo(0, 0); });
