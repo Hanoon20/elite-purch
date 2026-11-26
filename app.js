@@ -1705,7 +1705,19 @@ const RZ_IC = {
     <ellipse cx="24" cy="44.5" rx="13" ry="2" fill="#000" opacity=".28"/><path d="M24 4l16 6v12c0 10-6.8 17-16 21C14.800 39 8 32 8 22V10z" fill="#0F5E3A"/><path d="M24 2.500l16 6v12c0 10-6.800 17-16 21C14.800 37.500 8 30.500 8 20.500v-12z" fill="url(#roG)"/>
     <path d="M24 2.500l16 6v3L24 5.500 8 11.500v-3z" fill="#fff" opacity=".4"/><path d="M15.500 21.500l6 6 11-12" stroke="#fff" stroke-width="4.200" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>`
 };
-let rz = { st: "pending", bank: "", month: "", q: "" };
+let rz = { st: "pending", bank: "", month: "", q: "", page: 1 };
+const RZ_PAGE = 50;   // cheques per page
+// Recently ticked: kept on this device (localStorage), newest first, so a tick that left the Pending list can still be found or undone
+const RZ_LOG_KEY = "rz_recent_v1";
+function rzLogGet(){ try{ const l = JSON.parse(localStorage.getItem(RZ_LOG_KEY) || "[]"); return Array.isArray(l) ? l : []; }catch(e){ return []; } }
+function rzLogAdd(c, pass){
+  try{
+    const l = rzLogGet().filter(x => !(x.row === c.row && x.no === c.no));
+    l.unshift({ row: c.row, no: c.no, pass: !!pass, at: Date.now() });
+    localStorage.setItem(RZ_LOG_KEY, JSON.stringify(l.slice(0, 40)));
+  }catch(e){}
+}
+const rzAgo = ms => { const m = Math.round((Date.now() - ms) / 60000); return m < 1 ? "just now" : m < 60 ? m + " min ago" : m < 1440 ? Math.floor(m / 60) + " h ago" : new Date(ms).toLocaleDateString("en-GB", { day: "2-digit", month: "short" }); };
 const rzPassed = c => String(c.rs || "").trim().toUpperCase() === "P";
 function rzAll(){
   const out = [];
@@ -1728,7 +1740,7 @@ function rzView(){
   const nowKey = rzMonthKey(todayMs());   // only the current month and months already gone
   const months = [...new Set(all.filter(c => c.date != null).map(c => rzMonthKey(c.date)))].filter(k => k <= nowKey).sort().reverse();
   const mName = k => { const [y, m] = k.split("-").map(Number); return new Date(y, m - 1, 1).toLocaleDateString("en-GB", { month: "short", year: "numeric" }); };
-  const chips = [["pending", "Pending"], ["passed", "Passed"], ["all", "All"]];
+  const chips = [["pending", "Pending"], ["passed", "Passed"], ["recent", "Recent ticks"], ["all", "All"]];
   const ic = '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="9" cy="9" r="5.5"/><path d="M13.2 13.2L17 17"/></svg>';
   return `<div id="rzSum" class="rz-sum"></div>
   <div class="rz-filters">
@@ -1751,24 +1763,39 @@ function rzRender(){
   sum.innerHTML = `<div class="rz-hero"><div class="rz-ring"><svg viewBox="0 0 80 80" aria-hidden="true"><defs><linearGradient id="rzRg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#8CF0BC"/><stop offset="1" stop-color="#2FA971"/></linearGradient></defs><circle cx="40" cy="40" r="34" class="rz-trk"/><circle cx="40" cy="40" r="34" class="rz-prg" stroke-dasharray="${(C * pct / 100).toFixed(1)} ${C.toFixed(1)}" transform="rotate(-90 40 40)"/></svg><b>${pct}%</b></div>
     <div class="rz-hl"><span>Realized in bank</span><strong>${rs(tk)}</strong><em>${tp > 0 ? rs(tp) + " still pending" : "All cheques realized"}${due.length ? ` · <u>${fmtInt(due.length)} overdue</u>` : ""}</em></div></div>
     <div class="rz-cards">${card("pend", "Pending", pend.length, tp, "Tick them once they clear.")}${card("ok", "Passed", pass.length, tk, "Cleared in the bank statement.")}</div>`;
-  let list = rz.st === "pending" ? pend : rz.st === "passed" ? pass : base;
+  const logMap = new Map(); rzLogGet().forEach((x, i) => logMap.set(x.row + "|" + x.no, { at: x.at, pass: x.pass, i }));
+  let list = rz.st === "pending" ? pend : rz.st === "passed" ? pass : rz.st === "recent" ? rzAll().filter(c => logMap.has(c.row + "|" + c.no)) : base;
   // order: today and past dates first, newest first (yesterday on top), then upcoming dates, nearest first, then undated
   const grp = c => c.date == null ? 2 : c.date <= t0 ? 0 : 1;
-  list = list.slice().sort((x, y) => grp(x) - grp(y) || (grp(x) === 1 ? x.date - y.date : (y.date || 0) - (x.date || 0)));
-  if(!list.length){ res.innerHTML = `<div class="rz-empty"><i>${RZ_IC.ok}</i><b>${rz.st === "pending" ? "All caught up" : "Nothing here"}</b><span>${rz.st === "pending" ? "No cheques waiting for the bank statement." : "Try another filter."}</span></div>`; return; }
-  const shown = list.slice(0, 120);
+  list = list.slice().sort(rz.st === "recent" ? (x, y) => logMap.get(x.row + "|" + x.no).i - logMap.get(y.row + "|" + y.no).i
+    : (x, y) => grp(x) - grp(y) || (grp(x) === 1 ? x.date - y.date : (y.date || 0) - (x.date || 0)));
+  if(!list.length){ res.innerHTML = `<div class="rz-empty"><i>${RZ_IC.ok}</i><b>${rz.st === "pending" ? "All caught up" : "Nothing here"}</b><span>${rz.st === "pending" ? "No cheques waiting for the bank statement." : rz.st === "recent" ? "Cheques you tick on this phone show up here." : "Try another filter."}</span></div>`; return; }
+  const pages = Math.max(1, Math.ceil(list.length / RZ_PAGE));
+  if(rz.page > pages) rz.page = pages; if(rz.page < 1) rz.page = 1;
+  const from = (rz.page - 1) * RZ_PAGE, shown = list.slice(from, from + RZ_PAGE);
   let lastKey = "", h = "";
   shown.forEach(c => {
     const gp = c.date == null ? 2 : c.date <= t0 ? 0 : 1;
     const k = gp + "|" + (c.date == null ? "No date" : new Date(c.date).toLocaleDateString("en-GB", { month: "long", year: "numeric" }));
-    if(k !== lastKey){ lastKey = k; h += `<div class="rz-mh">${gp === 1 ? "Upcoming · " : ""}${k.split("|")[1]}</div>`; }
+    if(rz.st !== "recent" && k !== lastKey){ lastKey = k; h += `<div class="rz-mh">${gp === 1 ? "Upcoming · " : ""}${k.split("|")[1]}</div>`; }
+    const lg = logMap.get(c.row + "|" + c.no), tk2 = lg ? ` · <span class="rz-tk">${lg.pass ? "ticked" : "unticked"} ${rzAgo(lg.at)}</span>` : "";
     const p = rzPassed(c), od = !p && c.date != null && c.date <= t0, days = od ? Math.round((t0 - c.date) / DAY) : 0;
     h += `<label class="rz-row${p ? " done" : ""}${od ? " over" : ""}${c.busy ? " busy" : ""}"><input type="checkbox" class="rz-in" data-rzrow="${c.row}"${p ? " checked" : ""}${c.busy ? " disabled" : ""} aria-label="Passed in bank"><span class="rz-box" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>
-      <span class="rz-main"><b>${esc(c.g.sup)}</b><em>#${esc(c.no)}${c.bank ? ` <i class="rz-bank ${bankKey(c.bank)}">${esc((BANK_THEME[bankKey(c.bank)] || { n: c.bank }).n.replace(" Bank", ""))}</i>` : ""}</em><small>${c.date != null ? fmtDW(c.date) + " " + new Date(c.date).getFullYear() : "No cheque date"}${od ? ` · <span class="rz-late">${days === 0 ? "due today" : days + " day" + (days > 1 ? "s" : "") + " ago"}</span>` : ""}</small></span>
+      <span class="rz-main"><b>${esc(c.g.sup)}</b><em>#${esc(c.no)}${c.bank ? ` <i class="rz-bank ${bankKey(c.bank)}">${esc((BANK_THEME[bankKey(c.bank)] || { n: c.bank }).n.replace(" Bank", ""))}</i>` : ""}</em><small>${c.date != null ? fmtDW(c.date) + " " + new Date(c.date).getFullYear() : "No cheque date"}${od ? ` · <span class="rz-late">${days === 0 ? "due today" : days + " day" + (days > 1 ? "s" : "") + " ago"}</span>` : ""}${tk2}</small></span>
       <span class="rz-amt">${rs(c.amt)}</span></label>`;
   });
-  if(list.length > shown.length) h += `<p class="cq-note">Showing the first ${shown.length} of ${fmtInt(list.length)}. Use search, bank or month to narrow down.</p>`;
+  if(pages > 1) h += rzPager(rz.page, pages, from + 1, from + shown.length, list.length);
+  else if(list.length > 8) h += `<p class="cq-note">${fmtInt(list.length)} cheques</p>`;
   res.innerHTML = h;
+}
+function rzPager(cur, pages, a, b, total){
+  const nums = [1];
+  for(let i = cur - 1; i <= cur + 1; i++) if(i > 1 && i < pages) nums.push(i);
+  if(pages > 1) nums.push(pages);
+  let out = "", prev = 0;
+  nums.forEach(n => { if(n - prev > 1) out += '<span class="rz-gap" aria-hidden="true">&hellip;</span>'; out += `<button type="button" class="rz-pg${n === cur ? " on" : ""}" data-rzp="${n}" aria-label="Page ${n}"${n === cur ? ' aria-current="page"' : ""}>${n}</button>`; prev = n; });
+  const ch = d => `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${d}"/></svg>`;
+  return `<nav class="rz-pager" aria-label="Pages"><div class="rz-pgs"><button type="button" class="rz-pg nav" data-rzp="${cur - 1}" aria-label="Previous page"${cur <= 1 ? " disabled" : ""}>${ch("M12.5 4.5L7 10l5.5 5.5")}</button>${out}<button type="button" class="rz-pg nav" data-rzp="${cur + 1}" aria-label="Next page"${cur >= pages ? " disabled" : ""}>${ch("M7.5 4.5L13 10l-5.5 5.5")}</button></div><p>Showing <b>${fmtInt(a)}&ndash;${fmtInt(b)}</b> of <b>${fmtInt(total)}</b> cheques</p></nav>`;
 }
 async function rzSet(c, pass){
   const val = pass ? "P" : "O", prev = c.rs;
@@ -1783,6 +1810,7 @@ async function rzSet(c, pass){
     const cur = chk.values && chk.values[0] ? String(chk.values[0][0]).trim() : "";
     if(cur !== c.no){ c.rs = prev; toast("The sheet has changed. Refreshing, please tick again.", "error"); loadCheques(true); return; }
     await api(`${base}${encodeURIComponent(tab + "Q" + c.row)}?valueInputOption=RAW`, { values: [[val]] }, "PUT");
+    rzLogAdd(c, pass);
     toast(pass ? "Marked as passed" : "Marked as pending");
   }catch(err){
     c.rs = prev;
@@ -1796,13 +1824,19 @@ async function rzSet(c, pass){
 }
 chqView.addEventListener("change", e => {
   const t = e.target;
-  if(t.id === "rzBank"){ rz.bank = t.value; rzRender(); return; }
-  if(t.id === "rzMonth"){ rz.month = t.value; rzRender(); return; }
+  if(t.id === "rzBank"){ rz.bank = t.value; rz.page = 1; rzRender(); return; }
+  if(t.id === "rzMonth"){ rz.month = t.value; rz.page = 1; rzRender(); return; }
   const r = t.closest && t.closest(".rz-in");
   if(r){ const c = rzAll().find(x => String(x.row) === r.dataset.rzrow); if(c && !c.busy) rzSet(c, r.checked); else r.checked = !r.checked; }
 });
-chqView.addEventListener("input", e => { if(e.target.id === "rzQ"){ rz.q = e.target.value; rzRender(); } });
-chqView.addEventListener("click", e => { const b = e.target.closest && e.target.closest("[data-rzs]"); if(!b) return; rz.st = b.dataset.rzs; document.querySelectorAll("#rzChips .chip").forEach(x => x.classList.toggle("active", x === b)); rzRender(); });
+chqView.addEventListener("input", e => { if(e.target.id === "rzQ"){ rz.q = e.target.value; rz.page = 1; rzRender(); } });
+chqView.addEventListener("click", e => {
+  const pg = e.target.closest && e.target.closest("[data-rzp]");
+  if(!pg || pg.disabled) return;
+  rz.page = +pg.dataset.rzp; rzRender();
+  const top = $("rzChips"); if(top) top.scrollIntoView({ behavior: "smooth", block: "start" });
+});
+chqView.addEventListener("click", e => { const b = e.target.closest && e.target.closest("[data-rzs]"); if(!b) return; rz.st = b.dataset.rzs; rz.page = 1; document.querySelectorAll("#rzChips .chip").forEach(x => x.classList.toggle("active", x === b)); rzRender(); });
 
 function renderCheques(){
   const body = $("cqBody");
