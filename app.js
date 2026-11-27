@@ -429,7 +429,20 @@ function render(){
   $("k-monthavg").textContent = monthN ? fmtCompact(month / monthN).replace("Rs. ", "Rs.") : "—";
   $("k-lastavg").textContent = lastN ? fmtCompact(last / lastN).replace("Rs. ", "Rs.") : "—";
   const sp = $("heroSpark");
-  if(sp){ const yr = sums.slice(1, 13), mx = Math.max(1, ...yr); sp.innerHTML = yr.map((v, i) => `<u class="${i === now.getMonth() ? "on" : ""}" style="height:${Math.max(7, v / mx * 100).toFixed(0)}%" title="${MONTH_SHEETS[i]}"></u>`).join(""); }
+  if(sp){
+    const yr = sums.slice(1, 13), cur = now.getFullYear() === 2026 ? now.getMonth() : 11, W = 300, H = 80, P = 6;
+    const mx = Math.max(1, ...yr.slice(0, cur + 1)), X = i => P + i * (W - 2 * P) / 11, Y = v => H - P - v / mx * (H - 2 * P - 6);
+    const pts = yr.slice(0, cur + 1).map((v, i) => [X(i), Y(v)]);
+    let d = "M" + pts[0][0].toFixed(1) + " " + pts[0][1].toFixed(1);
+    for(let i = 1; i < pts.length; i++){ const p0 = pts[i - 2] || pts[i - 1], p1 = pts[i - 1], p2 = pts[i], p3 = pts[i + 1] || p2, t = 0.18;
+      const c1 = [p1[0] + (p2[0] - p0[0]) * t, Math.min(H - P, Math.max(P, p1[1] + (p2[1] - p0[1]) * t))], c2 = [p2[0] - (p3[0] - p1[0]) * t, Math.min(H - P, Math.max(P, p2[1] - (p3[1] - p1[1]) * t))];
+      d += `C${c1[0].toFixed(1)} ${c1[1].toFixed(1)} ${c2[0].toFixed(1)} ${c2[1].toFixed(1)} ${p2[0].toFixed(1)} ${p2[1].toFixed(1)}`; }
+    const last = pts[pts.length - 1];
+    sp.innerHTML = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"><defs><linearGradient id="hsG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#E2B43A" stop-opacity=".38"/><stop offset="1" stop-color="#E2B43A" stop-opacity="0"/></linearGradient></defs>
+      <path class="hs-g" d="M${P} ${H - P}H${W - P}M${P} ${(H / 2).toFixed(0)}H${W - P}"/><path d="${d}L${last[0].toFixed(1)} ${H - P}L${pts[0][0].toFixed(1)} ${H - P}Z" fill="url(#hsG)"/><path class="hs-l" d="${d}"/></svg>
+      <i class="hs-d" style="left:${(last[0] / W * 100).toFixed(2)}%;top:${(last[1] / H * 100).toFixed(2)}%"></i>
+      <div class="hs-m">${"JFMAMJJASOND".split("").map((c, i) => `<span class="${i === cur ? "on" : ""}">${c}</span>`).join("")}</div>`;
+  }
  
   renderChart(now);
   renderTopSuppliers();
