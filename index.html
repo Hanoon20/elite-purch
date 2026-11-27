@@ -1299,6 +1299,35 @@
     .finder-card{display:flex;flex-direction:column;} .finder-card .finder-grid{flex:1;} .finder-card .fields{align-content:start;}
   }
   :root[data-theme="light"] .tg{color:var(--text-2);} :root[data-theme="light"] .hero-spark u{background:linear-gradient(180deg,rgba(201,151,28,.5),rgba(201,151,28,.18));} :root[data-theme="light"] #dashView .bar{background:linear-gradient(180deg,#A3ACA8,#7D8783);}
+
+  /* Sheets & Bills KPI */
+  #sbStats .sv-stats{gap:12px;}
+  #sbStats .sv-stat{position:relative;overflow:hidden;container-type:inline-size;border-radius:20px;padding:14px 14px 14px 18px;background:radial-gradient(120% 140% at 0% 0%,color-mix(in srgb,var(--accent) 14%,transparent),transparent 62%),linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.015)),var(--panel);box-shadow:0 8px 18px -14px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.08);}
+  #sbStats .sv-stat::before{content:"";position:absolute;left:0;top:14px;bottom:14px;width:4px;border-radius:0 4px 4px 0;background:var(--accent);}
+  #sbStats .sv-stat.main{border-color:rgba(226,180,58,.3);}
+  #sbStats .sv-stat .k{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:10.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);}
+  #sbStats .sv-stat .k span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .sb-ic{width:26px;height:26px;border-radius:9px;display:grid;place-items:center;flex:0 0 auto;font-style:normal;background:linear-gradient(180deg,color-mix(in srgb,var(--accent) 28%,transparent),color-mix(in srgb,var(--accent) 10%,transparent));border:1px solid color-mix(in srgb,var(--accent) 34%,transparent);color:var(--accent);} .sb-ic svg{width:14px;height:14px;}
+  #sbStats .sv-stat .v{color:var(--accent);margin-top:8px;font-size:clamp(15px,9cqi,22px);font-weight:700;}
+  #sbStats .sv-stat.main .v{font-size:clamp(24px,8vw,34px);white-space:nowrap;font-size:clamp(22px,11cqi,36px);}
+  #sbStats .sv-stat .s{margin-top:6px;}
+  @media(max-width:679px){#sbStats .sv-stat:not(.main) .sb-ic,#sbStats .sv-stat:not(.main) .s{display:none;}}
+  @media(min-width:680px){
+    #sbStats .sv-stat{padding:18px 18px 16px 22px;} #sbStats .sv-stat.main{background:radial-gradient(130% 150% at 0% 0%,rgba(226,180,58,.2),transparent 62%),linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.015)),var(--panel);}
+    #sbStats .sv-stat.main .s{display:inline-block;padding:3px 11px;border-radius:999px;font-size:11.5px;font-weight:600;color:var(--text-2);background:rgba(226,180,58,.14);border:1px solid rgba(226,180,58,.34);}
+    #sbStats .sv-stat .v{font-size:clamp(18px,10cqi,26px);}
+  }
+
+  /* Sheets search card (mobile): search + compact sort button */
+  @media(max-width:679px){
+    #sheetsView .sb-controls{padding:12px;border-radius:18px;}
+    #sheetsView .sb-ctl-grid{grid-template-columns:minmax(0,1fr) 48px;gap:8px;align-items:center;}
+    #sheetsView .sb-ctl-grid .field-label{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;}
+    #sheetsView .sb-ctl-grid .field{gap:0;}
+    #sheetsView #sbSearch{height:48px;border-radius:14px;padding:0 12px 0 40px;font-size:14px;background-image:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="%238A948F" stroke-width="2.3" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>');background-repeat:no-repeat;background-position:13px center;background-size:18px;}
+    #sheetsView #sbSort{width:48px;height:48px;min-height:48px;padding:0;border-radius:14px;color:transparent;border-color:rgba(226,180,58,.4);background-color:rgba(226,180,58,.12);background-image:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="%23E2B43A" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M7 12h10M10 17h4"/></svg>');background-repeat:no-repeat;background-position:center;background-size:22px;box-shadow:inset 0 1px 0 rgba(255,255,255,.12);}
+    #sheetsView #sbSort option{color:var(--text);background:var(--panel-solid,#1b2220);font-size:14px;}
+  }
   /* ---------- Glass ---------- */
   :root{--glass:color-mix(in srgb,var(--panel-solid) 58%,transparent);--glass-in:rgba(255,255,255,.07);--glass-edge:rgba(255,255,255,.2);--glass-hi:rgba(255,255,255,.32);}
   :root[data-theme="light"]{--glass:color-mix(in srgb,var(--panel-solid) 72%,transparent);--glass-in:rgba(255,255,255,.55);--glass-edge:rgba(255,255,255,.75);--glass-hi:rgba(255,255,255,.95);}
@@ -1608,7 +1637,7 @@
     <div class="sb-ctl-grid">
       <div class="field"><label class="field-label" for="sbSearch">Search</label><input type="search" id="sbSearch" class="sb-search" placeholder="Supplier or invoice no." autocomplete="off" spellcheck="false" enterkeyhint="search"></div>
       <div class="field"><label class="field-label" for="sbSort">Sort by</label>
-        <select id="sbSort">
+        <select id="sbSort" aria-label="Sort by">
           <option value="recent">Recently added</option>
           <option value="oldest">Oldest added</option>
           <option value="amtHigh">Amount: high to low</option>
