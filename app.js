@@ -425,6 +425,11 @@ function render(){
   $("k-suppliers").textContent = fmtInt(bySup.size);
   $("k-monthbills").textContent = fmtInt(monthN);
   $("k-lastbills").textContent = fmtInt(lastN);
+  $("k-avg").textContent = n ? fmtCompact(total / n).replace("Rs. ", "Rs.") : "—";
+  $("k-monthavg").textContent = monthN ? fmtCompact(month / monthN).replace("Rs. ", "Rs.") : "—";
+  $("k-lastavg").textContent = lastN ? fmtCompact(last / lastN).replace("Rs. ", "Rs.") : "—";
+  const sp = $("heroSpark");
+  if(sp){ const yr = sums.slice(1, 13), mx = Math.max(1, ...yr); sp.innerHTML = yr.map((v, i) => `<u class="${i === now.getMonth() ? "on" : ""}" style="height:${Math.max(7, v / mx * 100).toFixed(0)}%" title="${MONTH_SHEETS[i]}"></u>`).join(""); }
  
   renderChart(now);
   renderTopSuppliers();
@@ -432,6 +437,7 @@ function render(){
   updateFinder();
 }
  
+function barShort(v){ return v >= 1e6 ? (v / 1e6).toFixed(1) + "M" : v >= 1e3 ? Math.round(v / 1e3) + "K" : String(Math.round(v)); }
 function renderChart(now){
   const max = Math.max(1, ...SHEET_SUMS);
   if(selectedSheet < 0){
@@ -444,7 +450,7 @@ function renderChart(now){
   $("chart").innerHTML = SHEETS.map((s, k) => {
     const h = (SHEET_SUMS[k] / max * 100).toFixed(1);
     return `<button class="bar-col${k === selectedSheet ? " sel" : ""}" type="button" role="listitem" data-k="${k}"
-      aria-label="${s}: ${fmtMoney(SHEET_SUMS[k])}"><div class="bar" style="height:${h}%;animation-delay:${k*25}ms"></div></button>`;
+      aria-label="${s}: ${fmtMoney(SHEET_SUMS[k])}"><div class="bar" style="height:${h}%;animation-delay:${k*25}ms"><i class="bar-v${SHEET_SUMS[k] ? "" : " z"}">${barShort(SHEET_SUMS[k])}</i></div></button>`;
   }).join("");
   $("chartLabels").innerHTML = SHEETS.map((s, k) => `<span class="${k === selectedSheet ? "sel" : ""}" title="${sheetLabel(k)}">${chartLabel(s)}</span>`).join("");
   showDetail(selectedSheet);
@@ -454,7 +460,7 @@ function showDetail(k){
   const total = SHEET_SUMS.reduce((a, b) => a + b, 0) || 1;
   $("detailName").textContent = sheetLabel(k);
   $("detailVal").textContent = fmtMoney(SHEET_SUMS[k] || 0);
-  $("detailSub").textContent = `${fmtInt(SHEET_COUNTS[k] || 0)} bills · ${((SHEET_SUMS[k] || 0) / total * 100).toFixed(1)}% of total`;
+  $("detailSub").innerHTML = `<span class="tg" style="--tc:#E2B43A"><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3h8l4 4v14H7z"/><path d="M15 3v4h4M10 12h6M10 16h6"/></svg></i><b>${fmtInt(SHEET_COUNTS[k] || 0)}</b> bills</span><span class="tg" style="--tc:#5EA4FF"><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 5L5 19"/><circle cx="7" cy="7" r="2.2"/><circle cx="17" cy="17" r="2.2"/></svg></i><b>${((SHEET_SUMS[k] || 0) / total * 100).toFixed(1)}%</b> of total</span>`;
 }
  
 function selectBar(k){
