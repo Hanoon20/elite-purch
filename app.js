@@ -1489,7 +1489,7 @@ function cqOverview(){
     const mn = n.toLocaleDateString("en-GB", { month: "long" });
     const th = BANK_THEME[b.toLowerCase().slice(0, 3)] || { n: b, m: b.slice(0, 2).toUpperCase() };
     return `<button type="button" class="bk bk-${esc(b.toLowerCase().slice(0, 3))}" data-bank="${esc(b)}"><span class="bk-art" aria-hidden="true"></span>
-      <span class="bk-top"><span class="bk-mono">${th.m}</span><span class="bk-name">${esc(th.n)}</span><span class="bk-go">View ›</span></span>
+      <span class="bk-top"><span class="bk-mono lg-${esc(b.toLowerCase().slice(0, 3))}" role="img" aria-label="${esc(th.n)}">${th.m}</span><span class="bk-name">${esc(th.n)}</span><span class="bk-go">View ›</span></span>
       <span class="bk-amt" data-n="${sumA(m)}">${rs(sumA(m))}</span><span class="bk-sub">${m.length} cheques in ${n.toLocaleDateString("en-GB", { month: "long" })}</span>
       <span class="bk-foot"><span>${mn} passed<b>${rs(sumA(m.filter(r => r.d < t0)))}</b></span><span>${mn} upcoming<b>${rs(sumA(m.filter(r => r.d >= t0)))}</b></span></span></button>`;
   }).join("");
@@ -1595,6 +1595,22 @@ function cqShow(from){
     requestAnimationFrame(() => { cqModal.classList.add("open"); const x = $("cqMdX"); if(x) x.focus({ preventScroll: true }); });
   }else{ const x = $("cqMdX"); if(x) x.focus({ preventScroll: true }); }
 }
+function rsWords(n){
+  if(!isFinite(n)) return "";
+  const O = ["", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen"], T = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
+  const two = x => x < 20 ? O[x] : T[Math.floor(x / 10)] + (x % 10 ? " " + O[x % 10] : "");
+  const three = x => (x >= 100 ? O[Math.floor(x / 100)] + " Hundred" + (x % 100 ? " and " : "") : "") + (x % 100 ? two(x % 100) : "");
+  const cents = Math.round(n * 100), rp = Math.floor(cents / 100), ps = cents % 100;
+  if(!rp && !ps) return "Zero Only";
+  const parts = []; let x = rp;
+  [[1e9, "Billion"], [1e6, "Million"], [1e3, "Thousand"]].forEach(([u, nm]) => { if(x >= u){ parts.push(three(Math.floor(x / u)) + " " + nm); x = x % u; } });
+  if(x) parts.push(three(x));
+  return (parts.join(" ") + (ps ? " and Cents " + two(ps) : "") + " Only").replace(/\s+/g, " ");
+}
+function ckDigits(ms){
+  if(ms == null) return Array(8).fill("");
+  const d = new Date(ms); return (String(d.getDate()).padStart(2, "0") + String(d.getMonth() + 1).padStart(2, "0") + d.getFullYear()).split("");
+}
 function cqOpenCheque(id, from, prev){
   const r = CHQ.recs[id]; if(!r) return;
   cqModal._cur = { t: "chq", id };
@@ -1603,9 +1619,14 @@ function cqOpenCheque(id, from, prev){
   const row = (k, v) => v ? `<div class="md-kv"><span>${k}</span><b>${v}</b></div>` : "";
   const others = CHQ.recs.filter(x => x.s === r.s && x.id !== r.id).sort((a, b) => { const ua = a.d >= t0, ub = b.d >= t0; return ua !== ub ? (ua ? -1 : 1) : ua ? a.d - b.d : b.d - a.d; }).slice(0, 5);
   $("cqModalBody").innerHTML = `<i class="md-grab" aria-hidden="true"></i>${prev ? `<button type="button" class="md-back" data-back><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>Back</button>` : ""}
-    <div class="md-hero bk-${esc(key)}"><span class="bk-art" aria-hidden="true"></span><button type="button" class="md-x md-x-lt" id="cqMdX" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
-      <div class="bk-top"><span class="bk-mono">${th.m}</span><span class="bk-name">${esc(th.n)}</span></div>
-      <div class="md-hero-v">${rs(r.a)}</div><div class="md-hero-s" id="cqMdTitle">${esc(r.s)}</div><span class="md-pill ${st[1]}">${st[0]}</span></div>
+    <div class="ck-wrap ck-${esc(key)}"><button type="button" class="md-x md-x-lt" id="cqMdX" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+      <div class="ck"><div class="ck-h"><span class="bk-mono lg-${esc(key)}" role="img" aria-label="${esc(th.n)}">${th.m}</span><span class="ck-bn">${esc(th.n)}<small>Cheque #${esc(r.no || "-")}</small></span><span class="ck-ac">A/C PAYEE ONLY</span></div>
+        <div class="ck-dt"><span>DATE</span><span class="ck-d">${ckDigits(r.d).map((c, i) => `<i${i === 1 || i === 3 ? ' class="g"' : ""}>${c}</i>`).join("")}</span></div>
+        <div class="ck-pay"><span>PAY</span><b id="cqMdTitle">${esc(r.s)}</b></div>
+        <div class="ck-rs"><div class="ck-w"><em>RUPEES</em>${esc(rsWords(r.a))}</div><div class="ck-amt">${rs(r.a)}</div></div>
+        <div class="ck-ft"><span class="ck-st ${st[1]}">${st[0]}</span><span class="ck-sg">AUTHORISED SIGNATURE</span></div>
+        <div class="ck-mi">${esc(String(r.no || "").padStart(6, "0"))} · ${esc(th.m)}</div></div>
+      <div class="ck-meta"><span>${r.d != null ? "<b>" + relDay(r.d, t0) + "</b>" : "No cheque date"}</span><span>${r.w != null ? "Written " + fmtD(r.w) : ""}</span></div></div>
     <div class="md-kvs">${row("Cheque date", r.d != null ? fmtD(r.d) + " · " + relDay(r.d, t0) : "Not set")}${row("Written date", r.w != null ? fmtD(r.w) : "")}${row("Cheque no.", r.no ? "#" + esc(r.no) : "Not set")}${row("Type", esc(r.ty))}${row("Bank", esc(r.bank))}${row("Supplier balance", r.bal != null ? rs(r.bal) : "")}${row("Contact", esc(r.ct))}${row("Sheet", esc(r.tab) + " · row " + r.row)}</div>
     ${cqRegisterHtml(r)}
     `;
@@ -1623,7 +1644,7 @@ function cqOpenBank(bank, from){
   const mk = [...mm.keys()].sort((a, b) => a - b), mx = Math.max(1, ...[...mm.values()].map(o => o.v));
   $("cqModalBody").innerHTML = `<i class="md-grab" aria-hidden="true"></i>
     <div class="md-hero bk-${esc(key)}"><span class="bk-art" aria-hidden="true"></span><button type="button" class="md-x md-x-lt" id="cqMdX" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
-      <div class="bk-top"><span class="bk-mono">${th.m}</span><span class="bk-name" id="cqMdTitle">${esc(th.n)}</span></div>
+      <div class="bk-top"><span class="bk-mono lg-${esc(key)}" role="img" aria-label="${esc(th.n)}">${th.m}</span><span class="bk-name" id="cqMdTitle">${esc(th.n)}</span></div>
       <div class="md-hero-v">${rs(sumA(mon))}</div><div class="md-hero-s">${mon.length} cheques in ${n.toLocaleDateString("en-GB", { month: "long", year: "numeric" })}</div></div>
     <div class="md-stats"><div><span>Next 7 days</span><b>${rs(sumA(w7))}</b><em>${w7.length} cheques</em></div><div><span>All upcoming</span><b>${rs(sumA(up))}</b><em>${up.length} cheque${up.length === 1 ? "" : "s"}</em></div><div><span>All time</span><b>${rs(sumA(mine))}</b><em>${mine.length} cheques</em></div></div>
     <div class="md-sec"><div class="md-sh"><span>Upcoming cheque days</span></div>${days.map(([d, r]) => `<button type="button" class="md-r md-btn" data-day="${d}"><div><b>${fmtDW(d)}</b><em>${relDay(d, t0)} · ${r.length} cheque${r.length > 1 ? "s" : ""}</em></div><strong>${rs(sumA(r))}</strong></button>`).join("") || '<p class="cq-note">No upcoming cheques.</p>'}</div>
