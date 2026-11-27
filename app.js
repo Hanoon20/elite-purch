@@ -22,6 +22,8 @@ const SHEET_ID = "1AUdMpLW4znCaB7UQbdjzmzcNUMX32xGLi5At8dCEfxQ";
 const MONTH_SHEETS = ["Jan","Feb","Mar","Apr","May","June","July","Aug","Sep","Oct","Nov","Dec"];
 const SALE_TAB = "Sale";                               // extra tab for sale purchases (same A–D columns as the month tabs)
 const SHEETS = ["2025", ...MONTH_SHEETS, SALE_TAB];
+const SB_IC = {"wal": "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M3 7a2 2 0 0 1 2-2h13v4\"/><path d=\"M3 7v11a2 2 0 0 0 2 2h14a1 1 0 0 0 1-1v-9a1 1 0 0 0-1-1H5a2 2 0 0 1-2-2z\"/><circle cx=\"16.5\" cy=\"14.5\" r=\"1.2\"/></svg>", "bill": "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M7 3h8l4 4v14H7z\"/><path d=\"M15 3v4h4M10 12h6M10 16h6\"/></svg>", "sup": "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"9\" cy=\"8\" r=\"3.2\"/><path d=\"M3 20c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5\"/><path d=\"M16 5.5a3 3 0 0 1 0 5.6M18 14.8c1.8.7 3 2.4 3 5.2\"/></svg>", "top": "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M4 18l5-6 4 3 7-9\"/><path d=\"M15 6h5v5\"/></svg>"};
+const SB_COL = { wal: "#E2B43A", bill: "#E2B43A", sup: "#4FC48A", top: "#5EA4FF" };
 const SALE_K = SHEETS.length - 1;                      // sheet index of the Sale tab
 // short axis label so 14 labels fit under their bars ("June" -> "Jun")
 const chartLabel = s => (s === "June" || s === "July") ? s.slice(0, 3) : s;
@@ -908,13 +910,13 @@ function renderSheetsView(){
   let total = 0, biggest = 0;
   const sups = new Set();
   for(const b of rows){ total += b.a; if(b.a > biggest) biggest = b.a; sups.add(b.s); }
-  const stat = (cls, label, text, sub, title) =>
-    `<div class="sv-stat ${cls}"><div class="k">${label}</div><div class="v num" title="${esc(title || "")}">${esc(text)}</div>${sub ? `<div class="s">${esc(sub)}</div>` : ""}</div>`;
+  const stat = (cls, label, text, sub, title, ic) =>
+    `<div class="sv-stat ${cls}" style="--accent:${SB_COL[ic]}"><div class="k"><span>${label}</span><i class="sb-ic">${SB_IC[ic]}</i></div><div class="v num" title="${esc(title || "")}">${esc(text)}</div>${sub ? `<div class="s">${esc(sub)}</div>` : ""}</div>`;
   stats.innerHTML = `<div class="sv-stats">` +
-    stat("main", q ? "Total (filtered)" : "Total", fmtCompact(total), `${SB_TITLE(sbSheet)} · ${fmtMoney(total)}`, fmtMoney(total)) +
-    stat("", "Bills", fmtInt(rows.length)) +
-    stat("", "Suppliers", fmtInt(sups.size)) +
-    stat("", "Largest", fmtCompact(biggest), "", fmtMoney(biggest)) +
+    stat("main", q ? "Total (filtered)" : "Total", fmtCompact(total), `${SB_TITLE(sbSheet)} · ${fmtMoney(total)}`, fmtMoney(total), "wal") +
+    stat("", "Bills", fmtInt(rows.length), q ? "matching bills" : "bills in this sheet", "", "bill") +
+    stat("", "Suppliers", fmtInt(sups.size), "unique suppliers", "", "sup") +
+    stat("", "Largest", fmtCompact(biggest), "single biggest bill", fmtMoney(biggest), "top") +
     `</div>`;
  
   if(!all.length){ list.innerHTML = msg(`No bills in ${esc(SB_TITLE(sbSheet))} yet.`); return; }
